@@ -57,6 +57,7 @@ export const SourceBadge: React.FC<SourceBadgeProps> = ({
   return (
     <span
       className={className}
+      data-testid="source-badge"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -72,7 +73,7 @@ export const SourceBadge: React.FC<SourceBadgeProps> = ({
       }}
     >
       <FileText size={iconSize} />
-      <span>User-provided description</span>
+      <span>User-provided</span>
     </span>
   );
 };

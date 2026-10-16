@@ -188,11 +188,11 @@ class TestJobEndpoints:
     ) -> None:
         payload = {"url": "https://www.linkedin.com/jobs/view/4478865041/"}
         resp = client.post("/api/jobs/extract", json=payload)
-        assert resp.status_code == 400
-        err = resp.json()
-        assert "error" in err
-        assert err["error"]["code"] == "LOGIN_WALL"
-        assert not err["error"]["retryable"]
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data.get("status") == "needs_paste"
+        assert data.get("reason") == "login_required"
+        assert "source_url" in data
 
     def test_crud_job_and_claims_matrix(self, client: TestClient) -> None:
         # 1. Extract job

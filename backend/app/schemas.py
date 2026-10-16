@@ -7,7 +7,7 @@ Reference: docs/BRAIN.md (§3, §9, §10, §13, §15.2).
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -212,6 +212,7 @@ class RequirementIn(BaseModel):
 class JobDraft(BaseModel):
     """Structured job description with extracted requirements."""
 
+    status: str = "ok"
     id: str | None = None
     title: str
     company: str
@@ -223,6 +224,15 @@ class JobDraft(BaseModel):
     ambiguities: list[str] = Field(default_factory=list)
     confirmed: bool = False
     created_at: str | None = None
+
+
+class JobExtractNeedsPaste(BaseModel):
+    """Typed result when a job URL requires manual paste (e.g. LinkedIn or login wall)."""
+
+    status: Literal["needs_paste"] = "needs_paste"
+    reason: str = "login_required"
+    source_url: str = ""
+    message: str = "LinkedIn / external site requires login authentication. Please paste the job description text."
 
 
 # --- Resume & Claims Matrix Models (PLAN-5H §1.2, §3, R0) ---

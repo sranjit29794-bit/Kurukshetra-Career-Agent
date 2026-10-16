@@ -172,6 +172,23 @@ class JobIngestError(Exception):
         }
 
 
+class LoginRequiredError(JobIngestError):
+    """Raised when a job URL hits a login wall, LinkedIn, or non-200 needing paste."""
+
+    def __init__(self, source_url: str, reason: str = "login_required") -> None:
+        super().__init__(
+            code="LOGIN_WALL",
+            message=(
+                "LinkedIn requires login authentication. Please copy the job description "
+                "text and use the 'Paste Text' option."
+            ),
+            retryable=False,
+            status_code=400,
+        )
+        self.source_url = source_url
+        self.reason = reason
+
+
 def strip_html_tags(raw_html: str) -> str:
     """Unescape HTML entities and strip markup tags to clean text."""
     if not raw_html:
@@ -206,17 +223,33 @@ class JobIngestAgent:
         parsed = urllib.parse.urlparse(url)
         netloc = parsed.netloc.lower()
 
-        # 1. LinkedIn Check: strict invariant — do not scrape or add cookies
+        # 1. LinkedIn Check: strict invariant — no scraping, no cookies.
         if "linkedin.com" in netloc:
-            raise JobIngestError(
-                code="LOGIN_WALL",
-                message=(
-                    "LinkedIn requires login authentication. Please copy the job description "
-                    "text and use the 'Paste Text' option."
-                ),
-                retryable=False,
-                status_code=400,
-            )
+            try:
+                headers = {
+                    "User-Agent": (
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    ),
+                    "Accept": "text/html,application/xhtml+xml,application/json",
+                }
+                async with httpx.AsyncClient(
+                    timeout=5.0, follow_redirects=False
+                ) as client:
+                    resp = await client.get(url, headers=headers)
+                    if resp.status_code in (301, 302, 303, 307, 308):
+                        raise LoginRequiredError(
+                            source_url=url, reason="login_required"
+                        )
+                    if resp.status_code != 200:
+                        raise LoginRequiredError(
+                            source_url=url, reason="login_required"
+                        )
+            except (httpx.RequestError, LoginRequiredError):
+                raise LoginRequiredError(
+                    source_url=url, reason="login_required"
+                ) from None
+            raise LoginRequiredError(source_url=url, reason="login_required")
 
         # 2. Greenhouse Check
         gh_match = re.search(
@@ -251,8 +284,30 @@ class JobIngestAgent:
             "Accept": "text/html,application/xhtml+xml,application/json",
         }
         try:
-            async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+            async with httpx.AsyncClient(
+                timeout=10.0, follow_redirects=False
+            ) as client:
                 resp = await client.get(url, headers=headers)
+                if resp.status_code in (301, 302, 303, 307, 308):
+                    loc = resp.headers.get("location", "").lower()
+                    if any(
+                        marker in loc
+                        for marker in (
+                            "login",
+                            "auth",
+                            "signin",
+                            "checkpoint",
+                            "authwall",
+                        )
+                    ):
+                        raise LoginRequiredError(
+                            source_url=url, reason="login_required"
+                        )
+                    # If location present, try one redirect
+                    if loc:
+                        resp = await client.get(
+                            resp.headers.get("location", url), headers=headers
+                        )
         except httpx.RequestError as exc:
             raise JobIngestError(
                 code="NETWORK_ERROR",
@@ -261,32 +316,11 @@ class JobIngestAgent:
                 status_code=502,
             ) from exc
 
-        if resp.status_code == 404:
-            raise JobIngestError(
-                code="NOT_FOUND",
-                message="Job posting not found at the specified URL.",
-                retryable=False,
-                status_code=404,
-            )
-
-        if resp.status_code in (401, 403, 999):
-            raise JobIngestError(
-                code="LOGIN_WALL",
-                message=(
-                    f"Job page returned status {resp.status_code} (login/access wall). "
-                    "Please copy the job text and use the 'Paste Text' option."
-                ),
-                retryable=False,
-                status_code=400,
-            )
-
-        if resp.status_code >= 400:
-            raise JobIngestError(
-                code="FETCH_ERROR",
-                message=f"Job URL returned HTTP {resp.status_code}.",
-                retryable=resp.status_code >= 500,
-                status_code=resp.status_code,
-            )
+        if (
+            resp.status_code in (301, 302, 303, 307, 308, 401, 403, 999)
+            or resp.status_code != 200
+        ):
+            raise LoginRequiredError(source_url=url, reason="login_required")
 
         text = strip_html_tags(resp.text)
         if len(text.strip()) < 50:

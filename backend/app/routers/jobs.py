@@ -16,7 +16,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from backend.app.agents.job_ingest import JobIngestError, job_ingest
+from backend.app.agents.job_ingest import JobIngestError, LoginRequiredError, job_ingest
 from backend.app.db import get_db
 from backend.app.models import (
     AnalysisModel,
@@ -30,6 +30,7 @@ from backend.app.schemas import (
     ClaimsRepo,
     ClaimsRow,
     JobDraft,
+    JobExtractNeedsPaste,
     Priority,
     RequirementIn,
     SourceType,
@@ -51,8 +52,10 @@ class JobExtractRequest(BaseModel):
     company: str | None = None
 
 
-@router.post("/extract", response_model=JobDraft)
-async def extract_job_posting(payload: JobExtractRequest) -> JobDraft:
+@router.post("/extract", response_model=JobDraft | JobExtractNeedsPaste)
+async def extract_job_posting(
+    payload: JobExtractRequest,
+) -> JobDraft | JobExtractNeedsPaste:
     """Extract structured job requirements from a URL (Greenhouse, Lever) or pasted text."""
     if payload.raw_text and payload.raw_text.strip():
         text = payload.raw_text.strip()
@@ -83,15 +86,30 @@ async def extract_job_posting(payload: JobExtractRequest) -> JobDraft:
 
     if payload.url and payload.url.strip():
         url = payload.url.strip()
-        title, company, clean_text, source_detail = await job_ingest.fetch_url(url)
-        return job_ingest.extract_requirements(
-            title=payload.title or title,
-            company=payload.company or company,
-            text_content=clean_text,
-            source_url=url,
-            source_type=SourceType.fetched,
-            source_detail=source_detail,
-        )
+        try:
+            title, company, clean_text, source_detail = await job_ingest.fetch_url(url)
+            return job_ingest.extract_requirements(
+                title=payload.title or title,
+                company=payload.company or company,
+                text_content=clean_text,
+                source_url=url,
+                source_type=SourceType.fetched,
+                source_detail=source_detail,
+            )
+        except LoginRequiredError as exc:
+            return JobExtractNeedsPaste(
+                status="needs_paste",
+                reason=exc.reason,
+                source_url=exc.source_url,
+            )
+        except JobIngestError as exc:
+            if exc.code == "LOGIN_WALL" or exc.status_code in (401, 403, 999):
+                return JobExtractNeedsPaste(
+                    status="needs_paste",
+                    reason="login_required",
+                    source_url=url,
+                )
+            raise
 
     raise JobIngestError(
         code="INVALID_INPUT",

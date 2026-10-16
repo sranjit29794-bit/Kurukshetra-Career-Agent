@@ -18,6 +18,7 @@ import { StepperHeader, type StepItem } from './StepperHeader';
 import { SourceBadge } from './SourceBadge';
 import { SkillIconTile } from './SkillIconTile';
 import { InfoBanner } from './InfoBanner';
+import { api } from '../lib/api';
 import resumeFixture from '../../../docs/fixtures/resume_draft.json';
 
 interface AddJobWizardProps {
@@ -185,23 +186,39 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
   const [analysisStage, setAnalysisStage] = useState<number>(0);
   const [isFinished, setIsFinished] = useState<boolean>(false);
 
-  // Handle URL fetch simulation
-  const handleFetchRequirements = () => {
+  // Handle URL fetch via real backend endpoint
+  const handleFetchRequirements = async () => {
+    if (!jobUrl.trim()) return;
     setIsExtracting(true);
     setExtractionError(null);
 
-    setTimeout(() => {
-      setIsExtracting(false);
-      if (jobUrl.includes('blocked') || jobUrl.includes('linkedin')) {
+    try {
+      const res = await api.extractJob({ url: jobUrl.trim() });
+      if ('status' in res && res.status === 'needs_paste') {
         setSourceType('user_provided');
         setExtractionError(
-          'Automated fetch encountered anti-bot or login wall. Switched to manual paste mode. Your source URL is preserved.'
+          'LinkedIn / external site requires login authentication. Switched to manual paste mode. Your source URL is preserved.'
         );
       } else {
+        const draft = res as JobDraft;
         setSourceType('fetched');
         setExtractionError(null);
+        if (draft.requirements && draft.requirements.length > 0) {
+          setRequirements(draft.requirements);
+        }
+        if (draft.raw_text) {
+          setJobText(draft.raw_text);
+        }
       }
-    }, 600);
+    } catch (err: unknown) {
+      setSourceType('user_provided');
+      const msg = err instanceof Error ? err.message : 'Login authentication required or fetch blocked.';
+      setExtractionError(
+        `${msg} Switched to manual paste mode. Your source URL is preserved.`
+      );
+    } finally {
+      setIsExtracting(false);
+    }
   };
 
   // Step 4 analysis progress animation

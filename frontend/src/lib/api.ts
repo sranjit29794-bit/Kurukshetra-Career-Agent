@@ -114,22 +114,30 @@ export const api = {
   /**
    * Extract structured job requirements from a URL or raw text.
    */
-  async extractJob(input: { url?: string; text?: string; title?: string; company?: string }): Promise<JobDraft> {
+  async extractJob(input: {
+    url?: string;
+    text?: string;
+    title?: string;
+    company?: string;
+  }): Promise<JobDraft | { status: 'needs_paste'; reason: string; source_url: string; message?: string }> {
     if (FORCE_FIXTURES) {
       await new Promise((resolve) => setTimeout(resolve, 300));
       return jobDraftFixture as unknown as JobDraft;
     }
 
-    return await requestJson<JobDraft>(`${API_BASE}/jobs/extract`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        url: input.url,
-        raw_text: input.text,
-        title: input.title,
-        company: input.company,
-      }),
-    });
+    return await requestJson<JobDraft | { status: 'needs_paste'; reason: string; source_url: string; message?: string }>(
+      `${API_BASE}/jobs/extract`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: input.url,
+          raw_text: input.text,
+          title: input.title,
+          company: input.company,
+        }),
+      }
+    );
   },
 
   /**
