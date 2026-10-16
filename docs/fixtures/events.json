@@ -1,0 +1,65 @@
+[
+  {
+    "id": 1,
+    "track_id": "track_demo",
+    "analysis_id": "analysis_c2",
+    "agent": "Job Analyst",
+    "level": "info",
+    "message": "Extracted 6 verified requirements from Kinetik Health posting",
+    "ts": "2026-10-16T12:15:00Z"
+  },
+  {
+    "id": 2,
+    "track_id": "track_demo",
+    "analysis_id": "analysis_c2",
+    "agent": "Repo Scout",
+    "level": "info",
+    "message": "Resolved HEAD SHA c3d4e5f on branch main (6 Python files in scope)",
+    "ts": "2026-10-16T12:15:02Z"
+  },
+  {
+    "id": 3,
+    "track_id": "track_demo",
+    "analysis_id": "analysis_c2",
+    "agent": "Change Sentinel",
+    "level": "info",
+    "message": "Impact plan: reassessing 4 skills (Python, FastAPI, SQL, Testing); carrying forward Deployment & CI/CD",
+    "ts": "2026-10-16T12:15:03Z"
+  },
+  {
+    "id": 4,
+    "track_id": "track_demo",
+    "analysis_id": "analysis_c2",
+    "agent": "Evidence Analyst",
+    "level": "info",
+    "message": "Found 1 strong SQL signal in app/db.py:12-30 and 1 testing signal in tests/test_db.py:8-24",
+    "ts": "2026-10-16T12:15:05Z"
+  },
+  {
+    "id": 5,
+    "track_id": "track_demo",
+    "analysis_id": "analysis_c2",
+    "agent": "Verifier",
+    "level": "info",
+    "message": "Verified all cited signal line ranges against blob content at c3d4e5f (0 mismatches)",
+    "ts": "2026-10-16T12:15:07Z"
+  },
+  {
+    "id": 6,
+    "track_id": "track_demo",
+    "analysis_id": "analysis_c2",
+    "agent": "Verifier",
+    "level": "warn",
+    "message": "Enforced Invariant #6: Testing status capped at PARTIAL (tests present without executed check-runs)",
+    "ts": "2026-10-16T12:15:07Z"
+  },
+  {
+    "id": 7,
+    "track_id": "track_demo",
+    "analysis_id": "analysis_c2",
+    "agent": "Coach",
+    "level": "success",
+    "message": "Drafted diff explanation: SQL moved Not demonstrated → Demonstrated; Testing moved Not demonstrated → Partially demonstrated",
+    "ts": "2026-10-16T12:15:08Z"
+  }
+]

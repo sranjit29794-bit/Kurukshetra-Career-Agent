@@ -1,0 +1,106 @@
+{
+  "from_sha": "a1b2c3d4e5f67890123456789abcdef012345678",
+  "to_sha": "c3d4e5f67890123456789abcdef0123456789012",
+  "commit_message": "feat(db): add sqlite database and tests",
+  "files_changed": [
+    "app/db.py",
+    "app/main.py",
+    "tests/test_db.py"
+  ],
+  "items": [
+    {
+      "requirement_id": "req_sql_database",
+      "name": "SQL",
+      "before_status": "NOT_DEMONSTRATED",
+      "after_status": "DEMONSTRATED",
+      "change": "improved",
+      "evidence_added": [
+        {
+          "id": "ev_c2_sql_1",
+          "assessment_id": "asmt_c2_sql",
+          "signal_id": "sig_sql_db_12_30",
+          "detector": "sql_database",
+          "file_path": "app/db.py",
+          "line_start": 12,
+          "line_end": 30,
+          "snippet": "def insert_item(name: str, price: float):\n    with get_connection() as conn:\n        cursor = conn.cursor()\n        cursor.execute('INSERT INTO items (name, price) VALUES (?, ?)', (name, price))\n        conn.commit()\n        return {'id': cursor.lastrowid, 'name': name, 'price': price}",
+          "blob_sha": "blob_c2_db",
+          "strength": "strong",
+          "counted": true
+        }
+      ],
+      "evidence_removed": [],
+      "reassessed": true,
+      "why": "SQL moved Not demonstrated → Demonstrated because app/db.py:12-30 adds parameterized sqlite3 queries wired into the routes."
+    },
+    {
+      "requirement_id": "req_testing",
+      "name": "Testing",
+      "before_status": "NOT_DEMONSTRATED",
+      "after_status": "PARTIAL",
+      "change": "improved",
+      "evidence_added": [
+        {
+          "id": "ev_c2_test_1",
+          "assessment_id": "asmt_c2_testing",
+          "signal_id": "sig_test_db_8_24",
+          "detector": "testing",
+          "file_path": "tests/test_db.py",
+          "line_start": 8,
+          "line_end": 24,
+          "snippet": "def test_insert_and_get_item(temp_db):\n    res = db.insert_item('Book', 19.99)\n    assert res['id'] is not None\n    items = db.get_items()\n    assert len(items) == 1\n    assert items[0]['name'] == 'Book'",
+          "blob_sha": "blob_c2_test",
+          "strength": "strong",
+          "counted": true
+        }
+      ],
+      "evidence_removed": [],
+      "reassessed": true,
+      "why": "Testing moved Not demonstrated → Partially demonstrated because tests/test_db.py:8-24 adds unit tests with assertions (status is capped at Partial per Invariant #6 until execution in CI)."
+    },
+    {
+      "requirement_id": "req_rest_api",
+      "name": "FastAPI / REST APIs",
+      "before_status": "DEMONSTRATED",
+      "after_status": "DEMONSTRATED",
+      "change": "unchanged",
+      "evidence_added": [],
+      "evidence_removed": [],
+      "reassessed": true,
+      "why": "REST API remains Demonstrated; endpoint handlers in app/main.py were updated to invoke the database."
+    },
+    {
+      "requirement_id": "req_deployment",
+      "name": "Deployment",
+      "before_status": "NOT_DEMONSTRATED",
+      "after_status": "NOT_DEMONSTRATED",
+      "change": "unchanged",
+      "evidence_added": [],
+      "evidence_removed": [],
+      "reassessed": false,
+      "why": "Not reassessed — no Dockerfile or deployment manifests were added."
+    },
+    {
+      "requirement_id": "req_ci_cd",
+      "name": "CI/CD (GitHub Actions)",
+      "before_status": "NOT_DEMONSTRATED",
+      "after_status": "NOT_DEMONSTRATED",
+      "change": "unchanged",
+      "evidence_added": [],
+      "evidence_removed": [],
+      "reassessed": false,
+      "why": "Not reassessed — no .github/workflows directory was added."
+    },
+    {
+      "requirement_id": "req_python",
+      "name": "Python",
+      "before_status": "DEMONSTRATED",
+      "after_status": "DEMONSTRATED",
+      "change": "unchanged",
+      "evidence_added": [],
+      "evidence_removed": [],
+      "reassessed": true,
+      "why": "Python remains Demonstrated across clean typed modules."
+    }
+  ]
+}

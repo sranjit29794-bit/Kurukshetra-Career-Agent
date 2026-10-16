@@ -1,0 +1,10 @@
+{
+  "name": "devproof-workspace",
+  "private": true,
+  "description": "DevProof - Evidence-backed career assessment & real-time repository reassessment engine",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "lint": "npm --prefix frontend run lint"
+  }
+}
