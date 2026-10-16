@@ -23,8 +23,9 @@ from backend.app.schemas import ErrorDetail, ErrorEnvelope
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager to initialize DB and manage background tasks."""
-    # Initialize SQLite database schemas
-    init_db()
+    # Initialize SQLite database schemas when running local SQLite
+    if settings.DATABASE_URL.startswith("sqlite"):
+        init_db()
     yield
     # Teardown logic (e.g. background watcher cancellation) will live here
 

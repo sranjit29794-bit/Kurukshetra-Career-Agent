@@ -48,6 +48,14 @@ def run_smoke_github(repo_target: str = "pallets/flask") -> bool:
             print(f"[GitHub] OK: Connected (Rate limit: {remaining}/{limit})")
 
             # 2. Fetch public repository (supports repo not owned by candidate)
+            # If repo_target has no owner slash (e.g. 'student-api'), attempt to resolve from user
+            if "/" not in repo_target and has_token:
+                user_resp = client.get("https://api.github.com/user", headers=headers)
+                if user_resp.status_code == 200:
+                    user_login = user_resp.json().get("login")
+                    if user_login:
+                        repo_target = f"{user_login}/{repo_target}"
+
             print(f"[GitHub] Testing public repo access: {repo_target}...")
             repo_resp = client.get(
                 f"https://api.github.com/repos/{repo_target}", headers=headers

@@ -149,6 +149,33 @@ def test_router_auto_discovery():
     assert data["watcher"] == "polling"
 
 
+def test_openapi_contract_paths():
+    """Verify /openapi.json contains all 4 R0 required contract paths and schemas."""
+    client = TestClient(app)
+    resp = client.get("/openapi.json")
+    assert resp.status_code == 200
+    schema = resp.json()
+    paths = schema.get("paths", {})
+
+    assert "post" in paths.get("/api/resume/parse", {}), (
+        "Missing POST /api/resume/parse in OpenAPI"
+    )
+    assert "get" in paths.get("/api/github/users/{u}/repos", {}), (
+        "Missing GET /api/github/users/{u}/repos in OpenAPI"
+    )
+    assert "get" in paths.get("/api/jobs/{id}/claims-matrix", {}), (
+        "Missing GET /api/jobs/{id}/claims-matrix in OpenAPI"
+    )
+    assert "post" in paths.get("/api/tracks", {}), "Missing POST /api/tracks in OpenAPI"
+
+    track_schema = (
+        schema.get("components", {}).get("schemas", {}).get("TrackCreate", {})
+    )
+    assert "resume_id" in track_schema.get("properties", {}), (
+        "TrackCreate schema missing resume_id"
+    )
+
+
 @pytest.mark.asyncio
 async def test_engine_stub_deterministic():
     """Verify EngineStub implements EngineProtocol and returns deterministic results."""
