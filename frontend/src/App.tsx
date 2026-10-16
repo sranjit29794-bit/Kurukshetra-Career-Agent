@@ -8,6 +8,7 @@ import { RepositoriesView } from './components/RepositoriesView';
 import { AgentActivityView } from './components/AgentActivityView';
 import { CompareView } from './components/CompareView';
 import { DevComponentsShowcase } from './components/DevComponentsShowcase';
+import { ClaimsMatrixView } from './components/ClaimsMatrixView';
 import type { JobDraft, TrackOpportunity, RecentChange, NextAction } from './types';
 import trackC2 from '../../docs/fixtures/track_assessment_c2.json';
 
@@ -150,6 +151,18 @@ export default function App() {
         <AddJobWizard
           onComplete={handleWizardComplete}
           onCancel={() => navigate('/')}
+          onViewClaimsMatrix={(jobId) => navigate(`/jobs/${jobId}/claims`)}
+        />
+      );
+    }
+    if (currentPath.startsWith('/jobs/') && currentPath.includes('/claims')) {
+      const match = currentPath.match(/^\/jobs\/([^/]+)\/claims/);
+      const jobId = match ? match[1] : 'job_devproof_demo';
+      return (
+        <ClaimsMatrixView
+          jobId={jobId}
+          onBackToDashboard={() => navigate('/')}
+          onProceedToAssessment={(trackId) => navigate(`/tracks/${trackId}/skills/req_sql_database`)}
         />
       );
     }

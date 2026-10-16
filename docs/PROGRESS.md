@@ -33,9 +33,18 @@ This document tracks progress across all phases according to `docs/PLAN-5H.md` a
 - **Files Touched:** `backend/app/config.py`, `backend/app/llm/client.py`, `backend/app/llm/prompts.py`, `backend/app/llm/fallback.py`, `backend/app/llm/__init__.py`, `backend/scripts/smoke_llm.py`, `backend/tests/ingest/test_llm.py`
 - **Test Gate:** PASS (76 tests passed across backend/tests, ruff check clean, ruff format clean, invariant scan clean)
 - **Libraries Looked Up:** openai (AsyncOpenAI), tenacity (AsyncRetrying)
+- **Commit Hash:** `301cb3d`
+- **Open Issues:** None
+
+### Phase FE-1: Frontend Setup & Wizard Refactor
+- **Status:** COMPLETED
+- **Files Touched:** `frontend/src/types.ts`, `frontend/src/components/AddJobWizard.tsx`, `frontend/src/components/ClaimsMatrixView.tsx`, `frontend/src/App.tsx`
+- **Test Gate:** PASS (oxlint 0 errors 0 warnings, tsc -b clean, vite build successful)
+- **Libraries Looked Up:** None (React 19, TypeScript 5.8)
 - **Commit Hash:** pending
 - **Open Issues:** None
 
 ---
+
 
 
