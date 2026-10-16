@@ -1,370 +1,580 @@
 import { useState } from 'react';
+import { Header } from './components/Header';
+import { Dashboard } from './components/Dashboard';
+import { AddJobWizard } from './components/AddJobWizard';
+import { StatusBadge } from './components/StatusBadge';
 import {
-  CheckCircle2,
-  CircleDot,
-  Circle,
-  RefreshCw,
-  Cpu,
   GitCommit,
   ExternalLink,
-  Code2
+  Code2,
+  ArrowLeft,
+  Radio,
 } from 'lucide-react';
+import type { JobDraft, TrackOpportunity, RecentChange, NextAction } from './types';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'compare'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'add_job' | 'evidence_detail'>('dashboard');
+  const [selectedTrackId, setSelectedTrackId] = useState<string>('track_demo');
+
+  // Tracked Opportunities state
+  const [opportunities, setOpportunities] = useState<TrackOpportunity[]>([
+    {
+      id: 'track_demo',
+      job: {
+        id: 'job_devproof_demo',
+        title: 'Backend Engineering Intern (Python/FastAPI)',
+        company: 'Kinetik Health',
+        source_url: 'https://jobs.example.com/kinetik/backend-intern',
+        source_type: 'fetched',
+        requirements: [
+          {
+            id: 'req_rest_api',
+            name: 'REST APIs',
+            category: 'Backend',
+            priority: 'must',
+            source_sentence: 'Proficient in Python and FastAPI to build clean REST APIs.',
+            taxonomy_key: 'rest_api',
+          },
+          {
+            id: 'req_sql_database',
+            name: 'SQL Database',
+            category: 'Database',
+            priority: 'must',
+            source_sentence: 'You will work with SQL databases.',
+            taxonomy_key: 'sql_database',
+          },
+          {
+            id: 'req_testing',
+            name: 'Testing',
+            category: 'Quality Assurance',
+            priority: 'must',
+            source_sentence: 'Write unit and integration tests.',
+            taxonomy_key: 'testing',
+          },
+          {
+            id: 'req_deployment',
+            name: 'Deployment',
+            category: 'DevOps',
+            priority: 'nice',
+            source_sentence: 'Help containerize services for deployment.',
+            taxonomy_key: 'deployment',
+          },
+          {
+            id: 'req_python',
+            name: 'Python',
+            category: 'Language',
+            priority: 'must',
+            source_sentence: 'Proficient in Python.',
+            taxonomy_key: 'python',
+          },
+        ],
+      },
+      repo: {
+        id: 'repo_student_api',
+        owner: 'rohan-student',
+        name: 'student-api',
+        default_branch: 'main',
+        html_url: 'https://github.com/rohan-student/student-api',
+        webhook_status: 'registered',
+      },
+      branch: 'main',
+      last_seen_sha: 'c3d4e5f67890123456789abcdef0123456789012',
+      last_assessed_at: '12 minutes ago',
+      watcher_mode: 'webhook',
+      status_summary: {
+        demonstrated: 3,
+        partial: 1,
+        not_demonstrated: 1,
+        unable: 0,
+      },
+      assessments: [
+        {
+          id: 'asmt_c2_rest',
+          analysis_id: 'analysis_c2',
+          requirement_id: 'req_rest_api',
+          status: 'DEMONSTRATED',
+          strength: 'strong',
+          summary: 'FastAPI routes now invoke persistent SQL queries from db.py with typed Pydantic response models.',
+          limitation: 'Route handlers catch generic exceptions without specific HTTP status code differentiation.',
+          next_step: 'Implement dedicated HTTP 404 / 400 exception handlers.',
+          carried_forward: false,
+          reassessed: true,
+          ignored_signals: [],
+          ai_used: true,
+          evidence: [
+            {
+              id: 'ev_c2_rest_1',
+              signal_id: 'sig_rest_main_15_38',
+              detector: 'rest_api',
+              file_path: 'app/main.py',
+              line_start: 15,
+              line_end: 38,
+              snippet: "@app.get('/items')\ndef list_items():\n    return db.get_items()\n\n@app.post('/items')\ndef create_item(item: ItemCreate):\n    return db.insert_item(item.name, item.price)",
+              blob_sha: 'blob_c2_main',
+              strength: 'strong',
+              counted: true,
+            },
+          ],
+        },
+        {
+          id: 'asmt_c2_sql',
+          analysis_id: 'analysis_c2',
+          requirement_id: 'req_sql_database',
+          status: 'DEMONSTRATED',
+          strength: 'strong',
+          summary: 'Parameterized SQL queries implemented in db.py using sqlite3 with proper placeholder binding (? args).',
+          limitation: 'Database queries use local SQLite file; production PostgreSQL migrations and pooling are not yet configured.',
+          next_step: 'Add SQLAlchemy or Alembic schema migrations targeting PostgreSQL.',
+          carried_forward: false,
+          reassessed: true,
+          ignored_signals: [],
+          ai_used: true,
+          evidence: [
+            {
+              id: 'ev_c2_sql_1',
+              signal_id: 'sig_sql_db_12_30',
+              detector: 'sql_database',
+              file_path: 'app/db.py',
+              line_start: 12,
+              line_end: 30,
+              snippet: "def insert_item(name: str, price: float):\n    with get_connection() as conn:\n        cursor = conn.cursor()\n        cursor.execute('INSERT INTO items (name, price) VALUES (?, ?)', (name, price))\n        conn.commit()\n        return {'id': cursor.lastrowid, 'name': name, 'price': price}",
+              blob_sha: 'blob_c2_db',
+              strength: 'strong',
+              counted: true,
+            },
+          ],
+        },
+        {
+          id: 'asmt_c2_testing',
+          analysis_id: 'analysis_c2',
+          requirement_id: 'req_testing',
+          status: 'PARTIAL',
+          strength: 'moderate',
+          summary: 'Automated unit tests added in tests/test_db.py with assertions verifying database inserts and queries against a temporary DB.',
+          limitation: 'Testing status is capped at Partially demonstrated because tests exist in repo but have not been verified via executed test runners or CI check-runs.',
+          next_step: 'Set up a GitHub Actions workflow to run pytest and record passing test results.',
+          carried_forward: false,
+          reassessed: true,
+          ignored_signals: [],
+          ai_used: true,
+          evidence: [
+            {
+              id: 'ev_c2_test_1',
+              signal_id: 'sig_test_db_8_24',
+              detector: 'testing',
+              file_path: 'tests/test_db.py',
+              line_start: 8,
+              line_end: 24,
+              snippet: "def test_insert_and_get_item(temp_db):\n    res = db.insert_item('Book', 19.99)\n    assert res['id'] is not None\n    items = db.get_items()\n    assert len(items) == 1\n    assert items[0]['name'] == 'Book'",
+              blob_sha: 'blob_c2_test',
+              strength: 'strong',
+              counted: true,
+            },
+          ],
+        },
+        {
+          id: 'asmt_c2_deployment',
+          analysis_id: 'analysis_c2',
+          requirement_id: 'req_deployment',
+          status: 'NOT_DEMONSTRATED',
+          strength: 'none',
+          summary: 'No deployment configuration found in analyzed repository files.',
+          limitation: 'No Dockerfile or deploy manifests were committed.',
+          next_step: 'Add a Dockerfile or deployment manifest.',
+          carried_forward: true,
+          reassessed: false,
+          ignored_signals: [],
+          ai_used: false,
+          evidence: [],
+        },
+        {
+          id: 'asmt_c2_python',
+          analysis_id: 'analysis_c2',
+          requirement_id: 'req_python',
+          status: 'DEMONSTRATED',
+          strength: 'strong',
+          summary: 'Python backend expanded with modular database access and helper context managers.',
+          limitation: 'Exception handling remains rudimentary.',
+          next_step: 'Add custom application exception hierarchy.',
+          carried_forward: false,
+          reassessed: true,
+          ignored_signals: [],
+          ai_used: true,
+          evidence: [
+            {
+              id: 'ev_c2_py_1',
+              signal_id: 'sig_py_db_1_20',
+              detector: 'python',
+              file_path: 'app/db.py',
+              line_start: 1,
+              line_end: 20,
+              snippet: "import sqlite3\nfrom contextlib import contextmanager\n\n@contextmanager\ndef get_connection():\n    conn = sqlite3.connect('dev.db')\n    try:\n        yield conn\n    finally:\n        conn.close()",
+              blob_sha: 'blob_c2_db',
+              strength: 'strong',
+              counted: true,
+            },
+          ],
+        },
+      ],
+    },
+  ]);
+
+  // Recent changes feed
+  const recentChanges: RecentChange[] = [
+    {
+      id: 'change_c2',
+      commit_sha: 'c3d4e5f67890123456789abcdef0123456789012',
+      commit_message: 'feat(db): add sqlite database and tests',
+      author: 'Rohan',
+      timestamp: '12m ago via webhook',
+      files_changed_count: 3,
+      skills_reassessed: ['SQL Database', 'Testing', 'REST APIs', 'Python'],
+      skills_unchanged: ['Deployment'],
+      transitions: [
+        {
+          skill: 'SQL Database',
+          before: 'NOT_DEMONSTRATED',
+          after: 'DEMONSTRATED',
+          change: 'improved',
+        },
+        {
+          skill: 'Testing',
+          before: 'NOT_DEMONSTRATED',
+          after: 'PARTIAL',
+          change: 'improved',
+        },
+      ],
+    },
+  ];
+
+  // Next actions
+  const nextActions: NextAction[] = [
+    {
+      id: 'act_1',
+      skill: 'SQL Database',
+      title: 'PostgreSQL Migration',
+      detail: 'Add SQLAlchemy or Alembic migrations targeting PostgreSQL to meet enterprise job requirements.',
+      priority: 'must',
+      target_file: 'app/db.py',
+    },
+    {
+      id: 'act_2',
+      skill: 'Testing',
+      title: 'CI Test Execution',
+      detail: 'Set up GitHub Actions workflow (.github/workflows/test.yml) to run pytest check-runs on every push.',
+      priority: 'must',
+      target_file: '.github/workflows/test.yml',
+    },
+    {
+      id: 'act_3',
+      skill: 'Deployment',
+      title: 'Containerization',
+      detail: 'Add a Dockerfile with multi-stage build referencing the FastAPI application.',
+      priority: 'nice',
+      target_file: 'Dockerfile',
+    },
+  ];
+
+  // Handle new job submission from wizard
+  const handleWizardComplete = (job: JobDraft, repoUrl: string) => {
+    const newOpportunity: TrackOpportunity = {
+      id: `track_${Date.now()}`,
+      job,
+      repo: {
+        id: `repo_${Date.now()}`,
+        owner: repoUrl.split('/')[3] || 'user',
+        name: repoUrl.split('/')[4] || 'candidate-repo',
+        default_branch: 'main',
+        html_url: repoUrl,
+        webhook_status: 'registered',
+      },
+      branch: 'main',
+      last_seen_sha: 'a1b2c3d4e5f67890123456789abcdef012345678',
+      last_assessed_at: 'Just now',
+      watcher_mode: 'polling',
+      status_summary: {
+        demonstrated: 1,
+        partial: 1,
+        not_demonstrated: job.requirements.length - 2,
+        unable: 0,
+      },
+      assessments: job.requirements.map((req, idx) => ({
+        id: `asmt_${idx}`,
+        analysis_id: 'analysis_initial',
+        requirement_id: req.id,
+        status: idx === 0 ? 'DEMONSTRATED' : idx === 1 ? 'PARTIAL' : 'NOT_DEMONSTRATED',
+        strength: idx === 0 ? 'strong' : idx === 1 ? 'moderate' : 'none',
+        summary: `Initial automated assessment for ${req.name}.`,
+        limitation: idx > 1 ? 'No evidence found in repository files analyzed.' : 'Scope is limited.',
+        next_step: `Implement verified patterns for ${req.name}.`,
+        carried_forward: false,
+        reassessed: true,
+        ignored_signals: [],
+        ai_used: true,
+        evidence: [],
+      })),
+    };
+
+    setOpportunities((prev) => [newOpportunity, ...prev]);
+    setCurrentView('dashboard');
+  };
+
+  const activeTrack = opportunities.find((o) => o.id === selectedTrackId) || opportunities[0];
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
-      {/* Top Bar per BRAIN §16.2 */}
-      <header
-        style={{
-          borderBottom: '1px solid var(--border)',
-          backgroundColor: 'var(--surface)',
-          padding: '12px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div
-              style={{
-                width: '28px',
-                height: '28px',
-                borderRadius: '6px',
-                backgroundColor: 'var(--accent)',
-                color: '#000',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 'bold',
-                fontSize: '16px',
-              }}
-            >
-              D
-            </div>
-            <span style={{ fontSize: '18px', fontWeight: 700, letterSpacing: '-0.02em' }}>
-              DevProof
-            </span>
-          </div>
-          <span style={{ color: 'var(--muted)', fontSize: '13px' }}>
-            Your code. Your proof.
-          </span>
-        </div>
+      {/* Top Header Bar */}
+      <Header
+        currentView={currentView === 'add_job' ? 'add_job' : 'dashboard'}
+        onNavigate={(view) => setCurrentView(view)}
+        watcherMode="polling"
+        nextPollInSeconds={15}
+        llmMode="ai_on"
+        rateLimitRemaining={4982}
+      />
 
-        {/* Global Status Chips per BRAIN §16.2 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px' }}>
+      {/* Main Content Area */}
+      {currentView === 'dashboard' && (
+        <Dashboard
+          opportunities={opportunities}
+          recentChanges={recentChanges}
+          nextActions={nextActions}
+          onAddJob={() => setCurrentView('add_job')}
+          onSelectTrack={(id) => {
+            setSelectedTrackId(id);
+            setCurrentView('evidence_detail');
+          }}
+        />
+      )}
+
+      {currentView === 'add_job' && (
+        <AddJobWizard
+          onComplete={handleWizardComplete}
+          onCancel={() => setCurrentView('dashboard')}
+        />
+      )}
+
+      {currentView === 'evidence_detail' && activeTrack && (
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
+          {/* Back button */}
+          <button
+            onClick={() => setCurrentView('dashboard')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: 'transparent',
+              border: 'none',
+              color: 'var(--accent)',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              marginBottom: '20px',
+              padding: 0,
+            }}
+          >
+            <ArrowLeft size={16} /> Back to Dashboard
+          </button>
+
+          {/* Job & Repo Header */}
           <div
             style={{
               display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '4px 10px',
-              borderRadius: '20px',
-              backgroundColor: 'var(--surface-2)',
-              border: '1px solid var(--border)',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              borderBottom: '1px solid var(--border)',
+              paddingBottom: '20px',
+              marginBottom: '28px',
+              flexWrap: 'wrap',
+              gap: '16px',
             }}
           >
-            <RefreshCw size={13} style={{ color: 'var(--accent)' }} />
-            <span>Polling · next in 15s</span>
+            <div>
+              <h1 style={{ fontSize: '22px', fontWeight: 700, margin: '0 0 6px 0' }}>
+                {activeTrack.job.title}
+              </h1>
+              <div style={{ color: 'var(--muted)', fontSize: '13.5px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <span>{activeTrack.job.company}</span>
+                <span>•</span>
+                <a
+                  href={activeTrack.job.source_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: 'var(--accent)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px' }}
+                >
+                  Source Posting <ExternalLink size={12} />
+                </a>
+                <span>•</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <GitCommit size={14} /> Commit: <code style={{ color: 'var(--accent)' }}>{activeTrack.last_seen_sha.substring(0, 7)}</code>
+                </span>
+                <span>•</span>
+                <span>Assessed {activeTrack.last_assessed_at}</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: '20px',
+                  backgroundColor: 'var(--surface-2)',
+                  border: '1px solid var(--border)',
+                  fontSize: '12px',
+                  color: 'var(--muted)',
+                }}
+              >
+                <Radio size={12} style={{ color: 'var(--accent)' }} />
+                <span>Watcher: {activeTrack.watcher_mode === 'webhook' ? 'Webhook' : 'Polling (15s)'}</span>
+              </div>
+            </div>
           </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '4px 10px',
-              borderRadius: '20px',
-              backgroundColor: 'var(--surface-2)',
-              border: '1px solid var(--border)',
-            }}
-          >
-            <Cpu size={13} style={{ color: '#34D399' }} />
-            <span>AI active</span>
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '4px 10px',
-              borderRadius: '20px',
-              backgroundColor: 'var(--surface-2)',
-              border: '1px solid var(--border)',
-            }}
-          >
-            <GitCommit size={13} />
-            <span>4,982 / 5,000 req</span>
+
+          {/* Evidence Cards Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '18px' }}>
+            {activeTrack.assessments.map((asmt) => {
+              const req = activeTrack.job.requirements.find((r) => r.id === asmt.requirement_id);
+              const isImproved = asmt.status === 'DEMONSTRATED' && asmt.evidence.length > 0;
+              return (
+                <div
+                  key={asmt.id}
+                  style={{
+                    backgroundColor: 'var(--surface)',
+                    border:
+                      asmt.status === 'NOT_DEMONSTRATED'
+                        ? '1px dashed var(--status-not-demonstrated)'
+                        : isImproved
+                        ? '1px solid var(--accent)'
+                        : '1px solid var(--border)',
+                    boxShadow: isImproved ? '0 0 16px rgba(45, 212, 191, 0.12)' : 'none',
+                    borderRadius: 'var(--radius)',
+                    padding: '22px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    {/* Card Header: Title + Status Badge */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        marginBottom: '12px',
+                        gap: '8px',
+                      }}
+                    >
+                      <div>
+                        <span style={{ fontWeight: 700, fontSize: '16px', color: 'var(--text)' }}>
+                          {req ? req.name : asmt.requirement_id}
+                        </span>
+                        {req && (
+                          <span
+                            style={{
+                              display: 'block',
+                              fontSize: '11px',
+                              color: 'var(--muted)',
+                              marginTop: '2px',
+                            }}
+                          >
+                            {req.category} • Priority: {req.priority.toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+
+                      <StatusBadge status={asmt.status} size="sm" />
+                    </div>
+
+                    {/* Summary */}
+                    <p style={{ fontSize: '13px', color: 'var(--text)', lineHeight: 1.5, margin: '0 0 14px 0' }}>
+                      {asmt.summary}
+                    </p>
+
+                    {/* Evidence Snippet Links */}
+                    {asmt.evidence.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+                        {asmt.evidence.map((ev) => (
+                          <div
+                            key={ev.id}
+                            style={{
+                              backgroundColor: 'var(--surface-2)',
+                              borderRadius: '6px',
+                              padding: '10px 12px',
+                              fontSize: '12px',
+                              border: '1px solid var(--border)',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                              <span style={{ color: 'var(--accent)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <Code2 size={13} /> {ev.file_path}:{ev.line_start}-{ev.line_end}
+                              </span>
+                              <span style={{ color: 'var(--muted)', fontSize: '11px' }}>
+                                detector: {ev.detector}
+                              </span>
+                            </div>
+                            <pre
+                              style={{
+                                margin: 0,
+                                fontSize: '11.5px',
+                                color: 'var(--muted)',
+                                overflowX: 'auto',
+                                whiteSpace: 'pre-wrap',
+                                fontFamily: 'JetBrains Mono',
+                              }}
+                            >
+                              {ev.snippet}
+                            </pre>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Limitation */}
+                    {asmt.limitation && (
+                      <div
+                        style={{
+                          backgroundColor: 'rgba(251, 191, 36, 0.06)',
+                          border: '1px solid rgba(251, 191, 36, 0.25)',
+                          borderRadius: '6px',
+                          padding: '8px 12px',
+                          fontSize: '12px',
+                          color: 'var(--status-partial)',
+                          marginBottom: '10px',
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        <strong>Limitation:</strong> {asmt.limitation}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Next Step */}
+                  {asmt.next_step && (
+                    <div
+                      style={{
+                        backgroundColor: 'rgba(45, 212, 191, 0.06)',
+                        border: '1px solid rgba(45, 212, 191, 0.2)',
+                        borderRadius: '6px',
+                        padding: '8px 12px',
+                        fontSize: '12px',
+                        color: 'var(--accent)',
+                        lineHeight: 1.4,
+                        marginTop: '6px',
+                      }}
+                    >
+                      <strong>Next step:</strong> {asmt.next_step}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
-      </header>
-
-      {/* Persistent Absence ≠ Failure Banner per BRAIN §16.2 */}
-      <div
-        style={{
-          backgroundColor: 'rgba(45, 212, 191, 0.08)',
-          borderBottom: '1px solid rgba(45, 212, 191, 0.2)',
-          padding: '8px 24px',
-          fontSize: '13px',
-          color: 'var(--accent)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-        }}
-      >
-        <span>💡</span>
-        <span>
-          <strong>Notice:</strong> Not demonstrated means not found in the analyzed scope — it doesn't prove you lack the skill.
-        </span>
-      </div>
-
-      {/* Main Content Shell */}
-      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
-        <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h1 style={{ fontSize: '24px', fontWeight: 600, margin: '0 0 6px 0' }}>
-              Backend Engineering Intern (Python/FastAPI)
-            </h1>
-            <p style={{ margin: 0, color: 'var(--muted)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span>Kinetik Health</span>
-              <span>•</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <GitCommit size={14} /> Commit: <code style={{ color: 'var(--accent)' }}>c3d4e5f</code>
-              </span>
-              <span>•</span>
-              <span>6 files analyzed</span>
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              style={{
-                backgroundColor: activeTab === 'dashboard' ? 'var(--accent)' : 'var(--surface)',
-                color: activeTab === 'dashboard' ? '#000' : 'var(--text)',
-                border: '1px solid var(--border)',
-                borderRadius: '8px',
-                padding: '8px 16px',
-                cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: '13px',
-              }}
-            >
-              Assessment Cards
-            </button>
-            <button
-              onClick={() => setActiveTab('compare')}
-              style={{
-                backgroundColor: activeTab === 'compare' ? 'var(--accent)' : 'var(--surface)',
-                color: activeTab === 'compare' ? '#000' : 'var(--text)',
-                border: '1px solid var(--border)',
-                borderRadius: '8px',
-                padding: '8px 16px',
-                cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: '13px',
-              }}
-            >
-              Compare View (Diff)
-            </button>
-          </div>
-        </div>
-
-        {/* Demo Cards Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '16px' }}>
-          {/* Card 1: REST API (Demonstrated) */}
-          <div
-            style={{
-              backgroundColor: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius)',
-              padding: '20px',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <span style={{ fontWeight: 600, fontSize: '16px' }}>REST APIs</span>
-              <span
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  color: 'var(--status-demonstrated)',
-                  backgroundColor: 'rgba(52, 211, 153, 0.1)',
-                  padding: '3px 8px',
-                  borderRadius: '12px',
-                }}
-              >
-                <CheckCircle2 size={13} /> Demonstrated
-              </span>
-            </div>
-            <p style={{ fontSize: '13px', color: 'var(--text)', lineHeight: 1.5, margin: '0 0 12px 0' }}>
-              FastAPI application with multiple typed endpoints and Pydantic request models.
-            </p>
-            <div
-              style={{
-                backgroundColor: 'var(--surface-2)',
-                borderRadius: '6px',
-                padding: '8px 12px',
-                fontSize: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <span style={{ color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Code2 size={14} /> app/main.py:15-32
-              </span>
-              <span style={{ color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                View <ExternalLink size={12} />
-              </span>
-            </div>
-          </div>
-
-          {/* Card 2: SQL Database (Demonstrated) */}
-          <div
-            style={{
-              backgroundColor: 'var(--surface)',
-              border: '1px solid var(--accent)',
-              boxShadow: '0 0 15px rgba(45, 212, 191, 0.15)',
-              borderRadius: 'var(--radius)',
-              padding: '20px',
-              position: 'relative',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <span style={{ fontWeight: 600, fontSize: '16px' }}>SQL Database</span>
-              <span
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  color: 'var(--status-demonstrated)',
-                  backgroundColor: 'rgba(52, 211, 153, 0.1)',
-                  padding: '3px 8px',
-                  borderRadius: '12px',
-                }}
-              >
-                <CheckCircle2 size={13} /> Demonstrated
-              </span>
-            </div>
-            <p style={{ fontSize: '13px', color: 'var(--text)', lineHeight: 1.5, margin: '0 0 12px 0' }}>
-              Parameterized SQL queries implemented in db.py using sqlite3 with proper placeholder binding (? args).
-            </p>
-            <div
-              style={{
-                backgroundColor: 'var(--surface-2)',
-                borderRadius: '6px',
-                padding: '8px 12px',
-                fontSize: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <span style={{ color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Code2 size={14} /> app/db.py:12-30
-              </span>
-              <span style={{ color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                View <ExternalLink size={12} />
-              </span>
-            </div>
-          </div>
-
-          {/* Card 3: Testing (Partially demonstrated) */}
-          <div
-            style={{
-              backgroundColor: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius)',
-              padding: '20px',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <span style={{ fontWeight: 600, fontSize: '16px' }}>Testing</span>
-              <span
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  color: 'var(--status-partial)',
-                  backgroundColor: 'rgba(251, 191, 36, 0.1)',
-                  padding: '3px 8px',
-                  borderRadius: '12px',
-                }}
-              >
-                <CircleDot size={13} /> Partially demonstrated
-              </span>
-            </div>
-            <p style={{ fontSize: '13px', color: 'var(--text)', lineHeight: 1.5, margin: '0 0 12px 0' }}>
-              Automated unit tests added in tests/test_db.py with assertions against a temporary database.
-            </p>
-            <div
-              style={{
-                backgroundColor: 'rgba(251, 191, 36, 0.08)',
-                border: '1px solid rgba(251, 191, 36, 0.2)',
-                borderRadius: '6px',
-                padding: '8px 12px',
-                fontSize: '12px',
-                color: 'var(--status-partial)',
-                marginBottom: '8px',
-              }}
-            >
-              ⚠️ Capped at Partial: Tests present in repo but not executed via CI check-runs.
-            </div>
-          </div>
-
-          {/* Card 4: Deployment (Not demonstrated - SLATE DASHED) */}
-          <div
-            style={{
-              backgroundColor: 'var(--surface)',
-              border: '1px dashed var(--status-not-demonstrated)',
-              borderRadius: 'var(--radius)',
-              padding: '20px',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <span style={{ fontWeight: 600, fontSize: '16px' }}>Deployment</span>
-              <span
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  color: 'var(--status-not-demonstrated)',
-                  backgroundColor: 'rgba(148, 163, 184, 0.1)',
-                  padding: '3px 8px',
-                  borderRadius: '12px',
-                }}
-              >
-                <Circle size={13} style={{ strokeDasharray: '2 2' }} /> Not demonstrated
-              </span>
-            </div>
-            <p style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: 1.5, margin: '0 0 12px 0' }}>
-              No containerization or deployment configurations discovered in analyzed files.
-            </p>
-            <div
-              style={{
-                backgroundColor: 'rgba(45, 212, 191, 0.05)',
-                border: '1px solid rgba(45, 212, 191, 0.15)',
-                borderRadius: '6px',
-                padding: '8px 12px',
-                fontSize: '12px',
-                color: 'var(--accent)',
-              }}
-            >
-              Next step: Add a Dockerfile or deployment manifest to demonstrate deployment readiness.
-            </div>
-          </div>
-        </div>
-      </main>
+      )}
     </div>
   );
 }
