@@ -499,7 +499,7 @@ class Orchestrator:
         if not detector:
             # Fall back to generic keyword search
             terms = req.search_terms or [req.name]
-            detector = GenericKeywordDetector(keywords=terms)
+            detector = GenericKeywordDetector(search_terms=terms)
 
         signals: list[Signal] = []
         for path, content in files.items():

@@ -21,8 +21,12 @@ class GenericKeywordDetector(BaseDetector):
 
     name: str = "generic_keyword"
 
-    def __init__(self, search_terms: list[str] | None = None) -> None:
-        self.search_terms = search_terms or []
+    def __init__(
+        self,
+        search_terms: list[str] | None = None,
+        keywords: list[str] | None = None,
+    ) -> None:
+        self.search_terms = search_terms or keywords or []
 
     def detect_with_terms(
         self,

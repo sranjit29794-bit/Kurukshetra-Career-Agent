@@ -184,7 +184,7 @@ class EvidenceJudge:
 
         if not detector:
             terms = requirement.search_terms or [requirement.name]
-            detector = GenericKeywordDetector(keywords=terms)
+            detector = GenericKeywordDetector(search_terms=terms)
 
         signals: list[Signal] = []
         for f in snapshot.files:
