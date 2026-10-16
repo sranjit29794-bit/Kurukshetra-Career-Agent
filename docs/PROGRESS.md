@@ -65,6 +65,14 @@ This document tracks progress across all phases according to `docs/PLAN-5H.md` a
 - **Files Touched:** `backend/app/agents/job_ingest.py`, `backend/app/routers/jobs.py`, `backend/app/main.py`, `backend/tests/ingest/test_job_ingest.py`
 - **Test Gate:** PASS (110 tests passed across backend/tests, ruff check clean, ruff format clean, invariant scan clean)
 - **Libraries Looked Up:** None (httpx, html, re)
+- **Commit Hash:** `4606aae`
+- **Open Issues:** None
+
+### Phase IN-3: Resume Ingestion & Claims Extraction
+- **Status:** COMPLETED
+- **Files Touched:** `backend/app/agents/resume_ingest.py`, `backend/app/routers/resume.py`, `backend/tests/ingest/test_resume_ingest.py`
+- **Test Gate:** PASS (117 tests passed across backend/tests, ruff check clean, ruff format clean, invariant scan clean)
+- **Libraries Looked Up:** pypdf
 - **Commit Hash:** Pending (next commit)
 - **Open Issues:** None
 
