@@ -1,0 +1,9 @@
+# DevProof demo inputs (public URLs only, no keys)
+# Greenhouse page checked 2026-10-17 (loads, posting open). API URL not tested.
+GREENHOUSE_OR_LEVER_URL=https://job-boards.greenhouse.io/doordashusa/jobs/8171041
+# LinkedIn link supplied by user; not verified by me (expect login wall -> paste fallback)
+LINKEDIN_URL=https://www.linkedin.com/jobs/view/4478865041/
+PASTE_TEXT_FILE=docs/demo/job_paste.txt
+DEMO_REPO=https://github.com/sranjit29794-bit/student-api
+# Public Python repo owned by someone else (HEAD resolved 2026-10-17)
+NOT_MY_REPO=https://github.com/miguelgrinberg/microblog
