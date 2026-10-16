@@ -57,6 +57,14 @@ This document tracks progress across all phases according to `docs/PLAN-5H.md` a
 - **Files Touched:** `backend/app/agents/evidence_judge.py`, `backend/app/agents/evidence_verifier.py`, `backend/app/agents/coach.py`, `backend/app/services/job_extractor.py`, `backend/app/engine_facade.py`, `backend/tests/engine/test_adversarial.py`, `backend/tests/engine/test_en2.py`
 - **Test Gate:** PASS (102 tests passed across backend/tests, ruff check clean, ruff format clean, invariant scan clean)
 - **Libraries Looked Up:** None
+- **Commit Hash:** `2244014`
+- **Open Issues:** None
+
+### Phase IN-2: Job Ingestion & Claims Matrix
+- **Status:** COMPLETED
+- **Files Touched:** `backend/app/agents/job_ingest.py`, `backend/app/routers/jobs.py`, `backend/app/main.py`, `backend/tests/ingest/test_job_ingest.py`
+- **Test Gate:** PASS (110 tests passed across backend/tests, ruff check clean, ruff format clean, invariant scan clean)
+- **Libraries Looked Up:** None (httpx, html, re)
 - **Commit Hash:** Pending (next commit)
 - **Open Issues:** None
 

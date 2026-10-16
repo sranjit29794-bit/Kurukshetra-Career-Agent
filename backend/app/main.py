@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 import backend.app.routers as routers_pkg
+from backend.app.agents.job_ingest import JobIngestError
 from backend.app.config import settings
 from backend.app.db import init_db
 from backend.app.github.client import GitHubAPIError
@@ -65,6 +66,17 @@ def auto_discover_routers(application: FastAPI) -> list[str]:
 
 # Auto-mount all discovered router modules
 discovered_routers = auto_discover_routers(app)
+
+
+@app.exception_handler(JobIngestError)
+async def job_ingest_error_handler(
+    request: Request, exc: JobIngestError
+) -> JSONResponse:
+    """Handle normalized Job Ingest errors with standard ErrorEnvelope."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=exc.to_dict(),
+    )
 
 
 @app.exception_handler(GitHubAPIError)
