@@ -279,3 +279,32 @@ class GitHubClient:
         )
 
         return result, analyzable_entries
+
+    async def compare_commits(self, owner: str, repo: str, base_sha: str, head_sha: str) -> Dict[str, Any]:
+        """Compares two commits via GET /repos/{owner}/{repo}/compare/{base}...{head}.
+
+        Returns changed files, status, and commit details.
+        """
+        url = f"{self.BASE_URL}/repos/{owner}/{repo}/compare/{base_sha}...{head_sha}"
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.get(url, headers=self.headers)
+            self._check_rate_limit(resp)
+
+            if resp.status_code != 200:
+                raise GitHubError(
+                    code="COMPARE_FAILED",
+                    message=f"Failed to compare commits {base_sha[:8]}...{head_sha[:8]} ({resp.status_code})",
+                    status_code=resp.status_code,
+                    retryable=resp.status_code >= 500,
+                )
+
+            data = resp.json()
+            files_changed = [f.get("filename") for f in data.get("files", []) if f.get("filename")]
+            return {
+                "status": data.get("status"),
+                "ahead_by": data.get("ahead_by", 0),
+                "behind_by": data.get("behind_by", 0),
+                "total_commits": data.get("total_commits", 0),
+                "files_changed": files_changed,
+                "raw_files": data.get("files", []),
+            }

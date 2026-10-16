@@ -454,7 +454,7 @@ export const DevTools: React.FC = () => {
                     Commit:{' '}
                     <code style={{ color: '#2dd4bf' }}>{assessmentData.commit_sha}</code> ·
                     Status: <span style={{ color: '#34d399' }}>{assessmentData.status}</span> ·
-                    Scope: {assessmentData.scope.analyzed} files analyzed
+                    Scope: {assessmentData.scope?.analyzed ?? 0} files analyzed
                   </div>
                 </div>
               </div>

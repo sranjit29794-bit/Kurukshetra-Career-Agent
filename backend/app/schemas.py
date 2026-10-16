@@ -199,6 +199,8 @@ class JobUpdateRequest(BaseModel):
 class TrackCreateRequest(BaseModel):
     job_id: int
     repo_id: int
+    branch: Optional[str] = None
+    head_sha: Optional[str] = None
 
 
 class TrackSummary(BaseModel):
@@ -209,6 +211,18 @@ class TrackSummary(BaseModel):
     last_seen_sha: Optional[str] = None
     watcher_mode: WatcherMode = WatcherMode.POLLING
     created_at: datetime
+
+
+class TrackDetail(BaseModel):
+    id: int
+    job_id: int
+    repo_id: int
+    branch: str
+    last_seen_sha: Optional[str] = None
+    watcher_mode: WatcherMode = WatcherMode.POLLING
+    created_at: datetime
+    job: JobDraft
+    repo: RepoConnectResult
 
 
 # ==============================================================================
@@ -273,7 +287,7 @@ class AnalysisDetail(BaseModel):
     kind: AnalysisKind
     status: AnalysisStatus
     prev_analysis_id: Optional[int] = None
-    scope: Scope
+    scope: Optional[Dict[str, Any]] = None
     ai_used: bool = False
     error: Optional[str] = None
     started_at: datetime

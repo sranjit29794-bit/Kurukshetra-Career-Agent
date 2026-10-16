@@ -117,6 +117,3 @@ Included test coverage:
 3. **Consistent Error Shape:** All API errors return `{ "error": { "code", "message", "retryable" } }`.
 4. **Idempotent Analysis Constraint:** Enforced in database schema: unique analysis per `(track_id, commit_sha)`.
 5. **Fixture Separation:** Developer verification tools at `/devtools` explicitly tag fixture data with `FIXTURE / MOCK DATA`.
-=======
-# Kurukshetra-Career-Agent
->>>>>>> origin/main

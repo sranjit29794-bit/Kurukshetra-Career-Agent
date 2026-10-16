@@ -141,6 +141,8 @@ export interface JobUpdateRequest {
 export interface TrackCreateRequest {
   job_id: number;
   repo_id: number;
+  branch?: string;
+  head_sha?: string;
 }
 
 export interface TrackSummary {
@@ -151,6 +153,18 @@ export interface TrackSummary {
   last_seen_sha?: string | null;
   watcher_mode: WatcherMode;
   created_at: string;
+}
+
+export interface TrackDetail {
+  id: number;
+  job_id: number;
+  repo_id: number;
+  branch: string;
+  last_seen_sha?: string | null;
+  watcher_mode: WatcherMode;
+  created_at: string;
+  job: JobDraft;
+  repo: RepoConnectResult;
 }
 
 // ==============================================================================
@@ -215,7 +229,7 @@ export interface AnalysisDetail {
   kind: AnalysisKind;
   status: AnalysisStatus;
   prev_analysis_id?: number | null;
-  scope: Scope;
+  scope?: Scope | null;
   ai_used: boolean;
   error?: string | null;
   started_at: string;

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { RepoConnectResult } from '../types/contract';
 import repoConnectFixture from '../../../docs/fixtures/repo_connect.json';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '';
+const API_BASE = 'http://localhost:8000';
 
 interface ActivityLogItem {
   id: string;
@@ -11,7 +11,11 @@ interface ActivityLogItem {
   message: string;
 }
 
-export const RepoMonitor: React.FC = () => {
+interface RepoMonitorProps {
+  onNavigate?: (route: string) => void;
+}
+
+export const RepoMonitor: React.FC<RepoMonitorProps> = () => {
   const [repoUrl, setRepoUrl] = useState<string>('');
   const [branch, setBranch] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);

@@ -8,7 +8,12 @@ from backend.app.config import get_settings
 from backend.app.db import init_db
 from backend.app.routers.dev import router as dev_router
 from backend.app.routers.health import router as health_router
+from backend.app.routers.jobs import router as jobs_router
 from backend.app.routers.repos import router as repos_router
+from backend.app.routers.tracks import router as tracks_router
+
+from backend.app.routers.webhooks import router as webhooks_router
+from backend.app.watcher.poller import polling_watcher
 
 settings = get_settings()
 
@@ -17,8 +22,11 @@ settings = get_settings()
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup: Initialize database tables safely
     init_db()
+    # Start background polling watcher
+    polling_watcher.start()
     yield
-    # Shutdown logic (e.g. clean up background tasks when implemented in later phases)
+    # Shutdown logic
+    polling_watcher.stop()
 
 
 app = FastAPI(
@@ -93,6 +101,9 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 app.include_router(health_router)
 app.include_router(dev_router)
 app.include_router(repos_router)
+app.include_router(jobs_router)
+app.include_router(tracks_router)
+app.include_router(webhooks_router)
 
 
 @app.get("/")
