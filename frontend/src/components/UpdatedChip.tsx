@@ -2,7 +2,7 @@ import React from 'react';
 import { ArrowUp, RefreshCw, Minus } from 'lucide-react';
 
 export interface UpdatedChipProps {
-  type?: 'files' | 'reassessed' | 'no_change' | 'carried_forward' | 'improved' | 'custom';
+  type?: 'files' | 'reassessed' | 'no_change' | 'not_reassessed' | 'carried_forward' | 'improved' | 'custom';
   count?: number;
   label?: string;
   size?: 'sm' | 'md';
@@ -89,6 +89,30 @@ export const UpdatedChip: React.FC<UpdatedChipProps> = ({
         }}
       >
         <span>{label}</span>
+      </span>
+    );
+  }
+
+  if (type === 'not_reassessed') {
+    return (
+      <span
+        className={className}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '4px',
+          padding,
+          fontSize,
+          fontWeight: 400,
+          borderRadius: 'var(--radius-pill, 8px)',
+          backgroundColor: 'transparent',
+          color: 'var(--muted, #8C9AB8)',
+          border: '1px solid transparent',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <Minus size={iconSize} />
+        <span>{label || 'Not reassessed'}</span>
       </span>
     );
   }

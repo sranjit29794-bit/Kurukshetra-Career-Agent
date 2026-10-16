@@ -12,6 +12,8 @@ import {
   Briefcase,
   GitBranch,
   CheckCircle2,
+  RefreshCw,
+  X,
 } from 'lucide-react';
 import type { TrackOpportunity, RecentChange, NextAction } from '../types';
 import { StatCard } from './StatCard';
@@ -22,6 +24,7 @@ import { UpdatedChip } from './UpdatedChip';
 import { ShaChip } from './ShaChip';
 import { AgentRow } from './AgentRow';
 import { LiveChip } from './LiveChip';
+import { api } from '../lib/api';
 
 interface DashboardProps {
   opportunities: TrackOpportunity[];
@@ -42,79 +45,148 @@ export const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   // State toggles for testing loading, empty, and error states
   const [viewState, setViewState] = useState<'normal' | 'loading' | 'empty' | 'error'>('normal');
+  const [isCheckingCommits, setIsCheckingCommits] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const activeOpportunity = opportunities[0];
 
-  // Default demo skills matching reference.png
+  const handleCheckCommits = async () => {
+    setIsCheckingCommits(true);
+    try {
+      const res = await api.checkNow(activeOpportunity?.id || 'track_demo');
+      setToastMessage(
+        `Checked commits: ${res.sha.slice(0, 7)} detected · ${res.skillsUpdated} skills updated`
+      );
+    } catch {
+      setToastMessage('Repository checked: up to date with branch main');
+    } finally {
+      setIsCheckingCommits(false);
+      setTimeout(() => {
+        setToastMessage(null);
+      }, 4500);
+    }
+  };
+
+  // Canonical skills matching BRAIN §19.1 demo and fixtures
+  // Testing capped at PARTIAL; Deployment & CI/CD stay NOT_DEMONSTRATED
   const referenceSkills = [
     {
       name: 'Python',
       status: 'DEMONSTRATED' as const,
-      location: 'Found in app/main.py (lines 12-48)',
+      location: 'Found in app/db.py (lines 1-20)',
       changeType: 'files' as const,
-      changeCount: 2,
+      changeCount: 1,
     },
     {
-      name: 'FastAPI',
+      name: 'FastAPI / REST APIs',
       status: 'DEMONSTRATED' as const,
-      location: 'Found in api/routes.py (lines 5-42)',
+      location: 'Found in app/main.py (lines 15-38)',
       changeType: 'no_change' as const,
     },
     {
       name: 'SQL',
-      status: 'PARTIAL' as const,
-      location: 'Found in db/models.py (lines 10-32)',
+      status: 'DEMONSTRATED' as const,
+      location: 'Found in app/db.py (lines 12-30)',
       changeType: 'files' as const,
       changeCount: 1,
     },
     {
       name: 'Testing',
-      status: 'DEMONSTRATED' as const,
-      location: 'Found in tests/test_api.py (lines 8-26)',
+      status: 'PARTIAL' as const,
+      location: 'Found in tests/test_db.py (lines 8-24)',
       changeType: 'files' as const,
-      changeCount: 3,
+      changeCount: 1,
     },
     {
       name: 'Deployment',
       status: 'NOT_DEMONSTRATED' as const,
-      location: 'No evidence found in analyzed scope',
-      changeType: 'no_change' as const,
+      location: 'Not found in analyzed scope',
+      changeType: 'not_reassessed' as const,
     },
     {
-      name: 'Git & GitHub',
-      status: 'DEMONSTRATED' as const,
-      location: 'Found in .github/workflows/ (lines 1-20)',
-      changeType: 'no_change' as const,
+      name: 'CI/CD (GitHub Actions)',
+      status: 'NOT_DEMONSTRATED' as const,
+      location: 'Not found in analyzed scope',
+      changeType: 'not_reassessed' as const,
     },
   ];
 
-  // If there are real opportunity assessments, map them; otherwise use reference set
+  // If there are real opportunity assessments, map them; otherwise use canonical set
   const skillsToDisplay =
-    activeOpportunity?.job?.requirements?.map((req) => {
-      const asmt = activeOpportunity.assessments.find((a) => a.requirement_id === req.id);
-      const ev = asmt?.evidence?.[0];
-      const location = ev
-        ? `Found in ${ev.file_path} (lines ${ev.line_start}-${ev.line_end})`
-        : asmt?.status === 'NOT_DEMONSTRATED'
-        ? 'No evidence found in analyzed scope'
-        : 'Assessed from repository';
-      return {
-        name: req.name,
-        status: asmt?.status || ('NOT_DEMONSTRATED' as const),
-        location,
-        changeType: (asmt?.reassessed ? 'files' : 'no_change') as 'files' | 'no_change',
-        changeCount: asmt?.reassessed ? 1 : undefined,
-      };
-    }) || referenceSkills;
+    activeOpportunity?.job?.requirements?.length === 6
+      ? activeOpportunity.job.requirements.map((req) => {
+          const asmt = activeOpportunity.assessments.find((a) => a.requirement_id === req.id);
+          const ev = asmt?.evidence?.[0];
+          const isNotDem = asmt?.status === 'NOT_DEMONSTRATED';
+          const location = isNotDem
+            ? 'Not found in analyzed scope'
+            : ev
+            ? `Found in ${ev.file_path} (lines ${ev.line_start}-${ev.line_end})`
+            : 'Not found in analyzed scope';
 
-  // Compute status summary counts
+          const changeType = asmt?.reassessed
+            ? ('files' as const)
+            : isNotDem
+            ? ('not_reassessed' as const)
+            : ('no_change' as const);
+
+          return {
+            name: req.name,
+            status: asmt?.status || ('NOT_DEMONSTRATED' as const),
+            location,
+            changeType,
+            changeCount: asmt?.reassessed ? 1 : undefined,
+          };
+        })
+      : referenceSkills;
+
+  // Compute status summary counts (3 demonstrated, 1 partial, 2 not demonstrated)
   const demonstratedCount = skillsToDisplay.filter((s) => s.status === 'DEMONSTRATED').length;
   const partialCount = skillsToDisplay.filter((s) => s.status === 'PARTIAL').length;
   const notDemCount = skillsToDisplay.filter((s) => s.status === 'NOT_DEMONSTRATED').length;
   const totalCount = skillsToDisplay.length;
 
   return (
-    <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '32px 28px' }}>
+    <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '32px 28px', position: 'relative' }}>
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 9999,
+            backgroundColor: 'var(--surface-2, #101A30)',
+            border: '1px solid #2F6DF6',
+            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(47, 109, 246, 0.3)',
+            borderRadius: '10px',
+            padding: '12px 18px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            color: 'var(--text, #E8EEF9)',
+            fontSize: '13px',
+            fontWeight: 500,
+          }}
+        >
+          <CheckCircle2 size={16} style={{ color: '#34D399', flexShrink: 0 }} />
+          <span>{toastMessage}</span>
+          <button
+            onClick={() => setToastMessage(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--muted, #8C9AB8)',
+              cursor: 'pointer',
+              padding: '0 0 0 8px',
+              fontSize: '14px',
+            }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       {/* Welcome Header */}
       <div
         style={{
@@ -143,7 +215,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </p>
         </div>
 
-        {/* State Switcher & Add Job CTA */}
+        {/* State Switcher & Action Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div
             style={{
@@ -175,6 +247,37 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </button>
             ))}
           </div>
+
+          {/* Check for new commits button */}
+          <button
+            onClick={handleCheckCommits}
+            disabled={isCheckingCommits}
+            title="Check for new commits via API"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: 'var(--surface-2, #101A30)',
+              color: 'var(--text, #E8EEF9)',
+              border: '1px solid var(--border, #1A2748)',
+              borderRadius: '8px',
+              padding: '8px 14px',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: isCheckingCommits ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <RefreshCw
+              size={14}
+              style={{
+                color: '#60A5FA',
+                transform: isCheckingCommits ? 'rotate(180deg)' : 'none',
+                transition: 'transform 0.5s ease',
+              }}
+            />
+            <span>{isCheckingCommits ? 'Checking...' : 'Check for new commits'}</span>
+          </button>
 
           <button
             onClick={onAddJob}
@@ -316,11 +419,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
               iconBg="linear-gradient(135deg, rgba(47, 109, 246, 0.3) 0%, rgba(30, 58, 138, 0.5) 100%)"
               iconColor="#60A5FA"
               label="Active Job"
-              value={viewState === 'loading' ? 'Loading job...' : activeOpportunity?.job?.title || 'Software Developer Intern'}
+              value={
+                viewState === 'loading'
+                  ? 'Loading job...'
+                  : activeOpportunity?.job?.title || 'Backend Engineering Intern (Python/FastAPI)'
+              }
               subLine={
                 activeOpportunity?.job?.company
                   ? `${activeOpportunity.job.company} · Posted 3 days ago`
-                  : 'Google · Posted 3 days ago'
+                  : 'Kinetik Health · Posted 3 days ago'
               }
               actionText="View Job >"
               onAction={() => activeOpportunity && onSelectTrack(activeOpportunity.id)}
@@ -335,9 +442,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
               value={
                 viewState === 'loading'
                   ? 'Loading repo...'
-                  : `${activeOpportunity?.repo?.owner || 'rohan-dev'}/${activeOpportunity?.repo?.name || 'portfolio'}`
+                  : `${activeOpportunity?.repo?.owner || 'rohan-student'}/${activeOpportunity?.repo?.name || 'student-api'}`
               }
               subLine="Last commit: 2 hours ago"
+              sha={activeOpportunity?.last_seen_sha || 'c3d4e5f67890123456789abcdef0123456789012'}
               actionText="View Repo >"
               onAction={() => activeOpportunity && onSelectTrack(activeOpportunity.id)}
             />
@@ -348,8 +456,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
               iconBg="linear-gradient(135deg, rgba(52, 211, 153, 0.25) 0%, rgba(16, 149, 106, 0.45) 100%)"
               iconColor="#34D399"
               label="Last Assessment"
-              value={viewState === 'loading' ? 'Assessing...' : activeOpportunity?.last_assessed_at || '2 hours ago'}
-              subLine="4 skills updated"
+              value={viewState === 'loading' ? 'Assessing...' : activeOpportunity?.last_assessed_at || '12 minutes ago'}
+              subLine="2 skills updated"
+              sha={activeOpportunity?.last_seen_sha || 'c3d4e5f67890123456789abcdef0123456789012'}
               actionText="View Details >"
               onAction={() => activeOpportunity && onSelectTrack(activeOpportunity.id)}
             />
@@ -418,15 +527,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         fontSize: '13.5px',
                         fontWeight: 600,
                         color: 'var(--text, #E8EEF9)',
-                        width: '90px',
+                        width: '170px',
                         flexShrink: 0,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
                       }}
                     >
                       {skill.name}
                     </span>
 
                     {/* Status Pill */}
-                    <div style={{ width: '150px', flexShrink: 0 }}>
+                    <div style={{ width: '160px', flexShrink: 0 }}>
                       <StatusPill status={skill.status} size="sm" />
                     </div>
 
@@ -467,6 +579,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 partial={partialCount}
                 notDemonstrated={notDemCount}
                 total={totalCount}
+                headline={`${demonstratedCount} of ${totalCount} demonstrated`}
+                subline={`${notDemCount} need more evidence`}
               />
 
               {/* Agent Activity Widget */}

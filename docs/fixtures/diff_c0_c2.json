@@ -10,7 +10,7 @@
   "items": [
     {
       "requirement_id": "req_sql_database",
-      "name": "SQL Database",
+      "name": "SQL",
       "before_status": "NOT_DEMONSTRATED",
       "after_status": "DEMONSTRATED",
       "change": "improved",
@@ -60,7 +60,7 @@
     },
     {
       "requirement_id": "req_rest_api",
-      "name": "REST APIs",
+      "name": "FastAPI / REST APIs",
       "before_status": "DEMONSTRATED",
       "after_status": "DEMONSTRATED",
       "change": "unchanged",
@@ -79,6 +79,17 @@
       "evidence_removed": [],
       "reassessed": false,
       "why": "Not reassessed — no Dockerfile or deployment manifests were added."
+    },
+    {
+      "requirement_id": "req_ci_cd",
+      "name": "CI/CD (GitHub Actions)",
+      "before_status": "NOT_DEMONSTRATED",
+      "after_status": "NOT_DEMONSTRATED",
+      "change": "unchanged",
+      "evidence_added": [],
+      "evidence_removed": [],
+      "reassessed": false,
+      "why": "Not reassessed — no .github/workflows directory was added."
     },
     {
       "requirement_id": "req_python",

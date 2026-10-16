@@ -7,6 +7,8 @@ export interface SegmentedRingProps {
   notDemonstrated: number;
   unable?: number;
   total?: number;
+  headline?: string;
+  subline?: string;
   className?: string;
 }
 
@@ -16,6 +18,8 @@ export const SegmentedRing: React.FC<SegmentedRingProps> = ({
   notDemonstrated,
   unable = 0,
   total: propTotal,
+  headline,
+  subline,
   className = '',
 }) => {
   const total = propTotal ?? (demonstrated + partial + notDemonstrated + unable);
@@ -156,7 +160,7 @@ export const SegmentedRing: React.FC<SegmentedRingProps> = ({
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
-            fontSize: '26px',
+            fontSize: '24px',
             fontWeight: 800,
             color: 'var(--text, #E8EEF9)',
             letterSpacing: '-0.03em',
@@ -168,13 +172,13 @@ export const SegmentedRing: React.FC<SegmentedRingProps> = ({
         </div>
         <div
           style={{
-            fontSize: '13px',
+            fontSize: '13.5px',
             fontWeight: 600,
             color: 'var(--text, #E8EEF9)',
             marginBottom: '6px',
           }}
         >
-          Skills Demonstrated
+          {headline || `${demonstrated} of ${total} demonstrated`}
         </div>
         <div
           style={{
@@ -189,7 +193,7 @@ export const SegmentedRing: React.FC<SegmentedRingProps> = ({
           {needsAttention > 0 ? (
             <>
               <ArrowUp size={12} strokeWidth={2.5} />
-              <span>{needsAttention} need attention</span>
+              <span>{subline || `${notDemonstrated} need more evidence`}</span>
             </>
           ) : (
             <span>All requirements demonstrated</span>
