@@ -4,14 +4,23 @@ Reference: docs/BRAIN.md (§7.4).
 Uses pydantic-settings v2 as verified via Context7.
 """
 
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_backend_dir = Path(__file__).resolve().parent.parent
+_project_root = _backend_dir.parent
+_env_files = (
+    str(_project_root / ".env"),
+    str(_backend_dir / ".env"),
+)
 
 
 class Settings(BaseSettings):
     """Runtime configuration for DevProof backend."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_env_files,
         env_file_encoding="utf-8",
         extra="ignore",
     )

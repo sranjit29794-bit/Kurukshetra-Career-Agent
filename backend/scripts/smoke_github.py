@@ -8,28 +8,54 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# Add project root to sys.path to allow running directly
+# Add project root to sys.path to allow running directly from any directory
 project_root = Path(__file__).resolve().parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 import httpx
 
-from backend.app.config import settings
+from backend.app.config import Settings
+
+# 1. Load backend/.env explicitly by path relative to this script file
+backend_env_path = Path(__file__).resolve().parent.parent / ".env"
+settings = (
+    Settings(_env_file=str(backend_env_path))
+    if backend_env_path.exists()
+    else Settings()
+)
 
 
-def run_smoke_github(repo_target: str = "pallets/flask") -> bool:
-    """Check GitHub rate limits and verify access to a public repository."""
+def run_smoke_github(repo_target: str) -> bool:
+    """Check GitHub rate limits and verify access to an owner/name public repository."""
     print("--- DevProof GitHub Smoke Test ---")
-    has_token = bool(settings.GITHUB_TOKEN)
+
+    # 2. Print Token Configured: True/False and never print the token
+    has_token = bool(settings.GITHUB_TOKEN and settings.GITHUB_TOKEN.strip())
     print(f"Token Configured: {has_token}")
 
+    # 4. Require owner/name and reject a bare name
+    if (
+        not repo_target
+        or "/" not in repo_target
+        or len(repo_target.split("/")) != 2
+        or not repo_target.split("/")[0].strip()
+        or not repo_target.split("/")[1].strip()
+    ):
+        print(
+            f"[GitHub] FAIL: Target '{repo_target}' is invalid. An explicit 'owner/name' format is required (bare repo names without an owner are rejected)."
+        )
+        return False
+
+    repo_target = repo_target.strip()
+
+    # 3. Send the token as an Authorization header
     headers = {
         "Accept": "application/vnd.github+json",
         "User-Agent": "DevProof-SmokeTest",
     }
     if has_token:
-        headers["Authorization"] = f"Bearer {settings.GITHUB_TOKEN}"
+        headers["Authorization"] = f"Bearer {settings.GITHUB_TOKEN.strip()}"
 
     try:
         with httpx.Client(timeout=10.0) as client:
@@ -47,15 +73,7 @@ def run_smoke_github(repo_target: str = "pallets/flask") -> bool:
             limit = core_rate.get("limit")
             print(f"[GitHub] OK: Connected (Rate limit: {remaining}/{limit})")
 
-            # 2. Fetch public repository (supports repo not owned by candidate)
-            # If repo_target has no owner slash (e.g. 'student-api'), attempt to resolve from user
-            if "/" not in repo_target and has_token:
-                user_resp = client.get("https://api.github.com/user", headers=headers)
-                if user_resp.status_code == 200:
-                    user_login = user_resp.json().get("login")
-                    if user_login:
-                        repo_target = f"{user_login}/{repo_target}"
-
+            # 2. Fetch public repository
             print(f"[GitHub] Testing public repo access: {repo_target}...")
             repo_resp = client.get(
                 f"https://api.github.com/repos/{repo_target}", headers=headers
@@ -79,7 +97,7 @@ def run_smoke_github(repo_target: str = "pallets/flask") -> bool:
                 return True
             else:
                 print(
-                    f"[GitHub] FAIL: Failed to read public repo '{repo_target}': HTTP {repo_resp.status_code}"
+                    f"[GitHub] FAIL: Failed to read public repo '{repo_target}': HTTP {repo_resp.status_code} - {repo_resp.text}"
                 )
                 print(f"[GitHub] Rate limit remaining: {rl_remaining_header}")
                 return False
@@ -90,6 +108,12 @@ def run_smoke_github(repo_target: str = "pallets/flask") -> bool:
 
 
 if __name__ == "__main__":
-    target = sys.argv[1] if len(sys.argv) > 1 else "pallets/flask"
+    if len(sys.argv) < 2:
+        print(
+            "[GitHub] FAIL: Missing repository target argument. Usage: python backend/scripts/smoke_github.py owner/name"
+        )
+        sys.exit(1)
+
+    target = sys.argv[1]
     success = run_smoke_github(target)
     sys.exit(0 if success else 1)

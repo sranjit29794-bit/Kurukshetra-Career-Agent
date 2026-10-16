@@ -13,7 +13,14 @@ if str(project_root) not in sys.path:
 
 from openai import OpenAI
 
-from backend.app.config import settings
+from backend.app.config import Settings
+
+backend_env_path = Path(__file__).resolve().parent.parent / ".env"
+settings = (
+    Settings(_env_file=str(backend_env_path))
+    if backend_env_path.exists()
+    else Settings()
+)
 
 
 def run_smoke_llm() -> bool:
