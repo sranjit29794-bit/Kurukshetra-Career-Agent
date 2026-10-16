@@ -89,8 +89,17 @@ This document tracks progress across all phases according to `docs/PLAN-5H.md` a
 - **Files Touched:** `backend/tests/integration/test_full_stack_flow.py`, `backend/app/routers/tracks.py`, `backend/app/agents/orchestrator.py`, `backend/tests/test_r0_contract.py`
 - **Test Gate:** PASS (118 tests passed across backend/tests, ruff check clean, ruff format clean, all 9 integration steps passed: job ingest, resume discovery, C0 initial assess, C1 signed push no-op, C2 push SQL & testing flip, CI check run upgrade, claims matrix, diff builder)
 - **Libraries Looked Up:** None
+- **Commit Hash:** `4c1aec6`
+- **Open Issues:** None
+
+### Phase 10: Hardening & Edge-Case Battery
+- **Status:** COMPLETED
+- **Files Touched:** `backend/app/agents/evidence_judge.py`, `backend/tests/integration/test_hardening_edge_cases.py`
+- **Test Gate:** PASS (127 tests passed across backend/tests, ruff check clean, ruff format clean, all 9 edge cases passed: LLM down fallback to deterministic, LLM malformed JSON retry/error, GitHub 403/429 rate limit envelope, GitHub 5xx upstream envelope, upstream 404 job posting envelope, duplicate webhook dedupe idempotency, unrelated/docs commit impact empty, non-Python repo handling, secret hygiene scan)
+- **Libraries Looked Up:** None
 - **Commit Hash:** Pending (next commit)
 - **Open Issues:** None
 
 ---
+
 

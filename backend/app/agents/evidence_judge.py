@@ -67,19 +67,18 @@ class EvidenceJudge:
         req_id = requirement.id or f"req_{requirement.taxonomy_key or 'custom'}"
 
         # 1. Deterministic preliminary status calculation
-        preliminary_status, preliminary_strength, preliminary_lims = decide(
+        preliminary_status, preliminary_strength, ignored_signals = decide(
             signals, requirement.taxonomy_key
         )
 
         valid_signal_map = {s.signal_id: s for s in signals if s.counted}
         cited_ids = list(valid_signal_map.keys())
-        ignored_signals = [s.model_dump() for s in signals if not s.counted]
 
         # 2. Try LLM review if enabled
         final_status = preliminary_status
         final_strength = preliminary_strength
         summary = ""
-        limitations = list(preliminary_lims)
+        limitations: list[str] = []
 
         if llm_client.enabled and llm_client.api_key and not llm_client.is_degraded:
             try:
