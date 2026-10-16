@@ -49,11 +49,15 @@ This document tracks progress across all phases according to `docs/PLAN-5H.md` a
 - **Files Touched:** `backend/app/agents/orchestrator.py`, `backend/app/agents/change_sentinel.py`, `backend/app/services/impact_map.py`, `backend/app/services/diff_builder.py`, `backend/app/routers/webhooks.py`, `backend/app/routers/tracks.py`, `backend/app/agents/repo_scout.py`, `backend/app/events.py`, `backend/tests/backend/test_be2.py`
 - **Test Gate:** PASS (91 tests passed across backend/tests, ruff check clean, ruff format clean, invariant scan clean)
 - **Libraries Looked Up:** hmac, hashlib, sse_starlette
-- **Commit Hash:** pending
+- **Commit Hash:** `f3e62e1`
+- **Open Issues:** None
+
+### Phase EN-2: Evidence Analyst, Verifier, Coach & Facade
+- **Status:** COMPLETED
+- **Files Touched:** `backend/app/agents/evidence_judge.py`, `backend/app/agents/evidence_verifier.py`, `backend/app/agents/coach.py`, `backend/app/services/job_extractor.py`, `backend/app/engine_facade.py`, `backend/tests/engine/test_adversarial.py`, `backend/tests/engine/test_en2.py`
+- **Test Gate:** PASS (102 tests passed across backend/tests, ruff check clean, ruff format clean, invariant scan clean)
+- **Libraries Looked Up:** None
+- **Commit Hash:** Pending (next commit)
 - **Open Issues:** None
 
 ---
-
-
-
-
