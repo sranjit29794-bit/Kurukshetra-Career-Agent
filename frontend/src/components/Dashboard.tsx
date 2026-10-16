@@ -2,17 +2,26 @@ import React, { useState } from 'react';
 import {
   ExternalLink,
   Plus,
-  GitCommit,
   ArrowRight,
   Sparkles,
   AlertCircle,
   Clock,
-  Radio,
   Layers,
   ChevronRight,
   TrendingUp,
+  Briefcase,
+  GitBranch,
+  CheckCircle2,
 } from 'lucide-react';
 import type { TrackOpportunity, RecentChange, NextAction } from '../types';
+import { StatCard } from './StatCard';
+import { SegmentedRing } from './SegmentedRing';
+import { SkillIconTile } from './SkillIconTile';
+import { StatusPill } from './StatusPill';
+import { UpdatedChip } from './UpdatedChip';
+import { ShaChip } from './ShaChip';
+import { AgentRow } from './AgentRow';
+import { LiveChip } from './LiveChip';
 
 interface DashboardProps {
   opportunities: TrackOpportunity[];
@@ -20,6 +29,7 @@ interface DashboardProps {
   nextActions: NextAction[];
   onAddJob: () => void;
   onSelectTrack: (trackId: string) => void;
+  onNavigateActivity?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -28,39 +38,90 @@ export const Dashboard: React.FC<DashboardProps> = ({
   nextActions,
   onAddJob,
   onSelectTrack,
+  onNavigateActivity,
 }) => {
   // State toggles for testing loading, empty, and error states
   const [viewState, setViewState] = useState<'normal' | 'loading' | 'empty' | 'error'>('normal');
 
-  // Compute plain counts (STRICT INVARIANT: No readiness percentage anywhere)
-  const totalTracked = viewState === 'empty' ? 0 : opportunities.length;
-  const totalRequirements = viewState === 'empty' ? 0 : opportunities.reduce(
-    (acc, opp) =>
-      acc +
-      opp.status_summary.demonstrated +
-      opp.status_summary.partial +
-      opp.status_summary.not_demonstrated +
-      opp.status_summary.unable,
-    0
-  );
-  const totalStrongEvidence = viewState === 'empty' ? 0 : opportunities.reduce(
-    (acc, opp) => acc + opp.status_summary.demonstrated,
-    0
-  );
-  const totalNeedEvidence = viewState === 'empty' ? 0 : opportunities.reduce(
-    (acc, opp) => acc + opp.status_summary.partial + opp.status_summary.not_demonstrated,
-    0
-  );
+  const activeOpportunity = opportunities[0];
+
+  // Default demo skills matching reference.png
+  const referenceSkills = [
+    {
+      name: 'Python',
+      status: 'DEMONSTRATED' as const,
+      location: 'Found in app/main.py (lines 12-48)',
+      changeType: 'files' as const,
+      changeCount: 2,
+    },
+    {
+      name: 'FastAPI',
+      status: 'DEMONSTRATED' as const,
+      location: 'Found in api/routes.py (lines 5-42)',
+      changeType: 'no_change' as const,
+    },
+    {
+      name: 'SQL',
+      status: 'PARTIAL' as const,
+      location: 'Found in db/models.py (lines 10-32)',
+      changeType: 'files' as const,
+      changeCount: 1,
+    },
+    {
+      name: 'Testing',
+      status: 'DEMONSTRATED' as const,
+      location: 'Found in tests/test_api.py (lines 8-26)',
+      changeType: 'files' as const,
+      changeCount: 3,
+    },
+    {
+      name: 'Deployment',
+      status: 'NOT_DEMONSTRATED' as const,
+      location: 'No evidence found in analyzed scope',
+      changeType: 'no_change' as const,
+    },
+    {
+      name: 'Git & GitHub',
+      status: 'DEMONSTRATED' as const,
+      location: 'Found in .github/workflows/ (lines 1-20)',
+      changeType: 'no_change' as const,
+    },
+  ];
+
+  // If there are real opportunity assessments, map them; otherwise use reference set
+  const skillsToDisplay =
+    activeOpportunity?.job?.requirements?.map((req) => {
+      const asmt = activeOpportunity.assessments.find((a) => a.requirement_id === req.id);
+      const ev = asmt?.evidence?.[0];
+      const location = ev
+        ? `Found in ${ev.file_path} (lines ${ev.line_start}-${ev.line_end})`
+        : asmt?.status === 'NOT_DEMONSTRATED'
+        ? 'No evidence found in analyzed scope'
+        : 'Assessed from repository';
+      return {
+        name: req.name,
+        status: asmt?.status || ('NOT_DEMONSTRATED' as const),
+        location,
+        changeType: (asmt?.reassessed ? 'files' : 'no_change') as 'files' | 'no_change',
+        changeCount: asmt?.reassessed ? 1 : undefined,
+      };
+    }) || referenceSkills;
+
+  // Compute status summary counts
+  const demonstratedCount = skillsToDisplay.filter((s) => s.status === 'DEMONSTRATED').length;
+  const partialCount = skillsToDisplay.filter((s) => s.status === 'PARTIAL').length;
+  const notDemCount = skillsToDisplay.filter((s) => s.status === 'NOT_DEMONSTRATED').length;
+  const totalCount = skillsToDisplay.length;
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
-      {/* Top Header & Primary CTA */}
+    <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '32px 28px' }}>
+      {/* Welcome Header */}
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'flex-start',
-          marginBottom: '28px',
+          marginBottom: '26px',
           flexWrap: 'wrap',
           gap: '16px',
         }}
@@ -69,87 +130,50 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <h1
             style={{
               fontSize: '24px',
-              fontWeight: 700,
-              letterSpacing: '-0.02em',
+              fontWeight: 800,
+              letterSpacing: '-0.025em',
               margin: '0 0 6px 0',
-              color: 'var(--text)',
+              color: 'var(--text, #E8EEF9)',
             }}
           >
-            Evidence Overview
+            Welcome back, Rohan 👋
           </h1>
-          <p style={{ margin: 0, color: 'var(--muted)', fontSize: '14px' }}>
-            Continuously updated assessment tracking code proof against real job posting requirements.
+          <p style={{ margin: 0, color: 'var(--muted, #8C9AB8)', fontSize: '14px' }}>
+            Your projects. Real evidence. Career ready.
           </p>
         </div>
 
+        {/* State Switcher & Add Job CTA */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* Debug / Fixture state switcher for judges / testing */}
           <div
             style={{
               display: 'flex',
-              backgroundColor: 'var(--surface-2)',
-              borderRadius: '6px',
-              border: '1px solid var(--border)',
+              backgroundColor: 'var(--surface-2, #101A30)',
+              borderRadius: '8px',
+              border: '1px solid var(--border, #1A2748)',
               padding: '2px',
               fontSize: '11px',
             }}
           >
-            <button
-              onClick={() => setViewState('normal')}
-              style={{
-                background: viewState === 'normal' ? 'var(--surface)' : 'transparent',
-                color: viewState === 'normal' ? 'var(--text)' : 'var(--muted)',
-                border: 'none',
-                borderRadius: '4px',
-                padding: '4px 8px',
-                cursor: 'pointer',
-                fontWeight: 600,
-              }}
-            >
-              Normal
-            </button>
-            <button
-              onClick={() => setViewState('loading')}
-              style={{
-                background: viewState === 'loading' ? 'var(--surface)' : 'transparent',
-                color: viewState === 'loading' ? 'var(--text)' : 'var(--muted)',
-                border: 'none',
-                borderRadius: '4px',
-                padding: '4px 8px',
-                cursor: 'pointer',
-                fontWeight: 600,
-              }}
-            >
-              Skeleton Loading
-            </button>
-            <button
-              onClick={() => setViewState('empty')}
-              style={{
-                background: viewState === 'empty' ? 'var(--surface)' : 'transparent',
-                color: viewState === 'empty' ? 'var(--text)' : 'var(--muted)',
-                border: 'none',
-                borderRadius: '4px',
-                padding: '4px 8px',
-                cursor: 'pointer',
-                fontWeight: 600,
-              }}
-            >
-              Empty
-            </button>
-            <button
-              onClick={() => setViewState('error')}
-              style={{
-                background: viewState === 'error' ? 'var(--surface)' : 'transparent',
-                color: viewState === 'error' ? 'var(--text)' : 'var(--muted)',
-                border: 'none',
-                borderRadius: '4px',
-                padding: '4px 8px',
-                cursor: 'pointer',
-                fontWeight: 600,
-              }}
-            >
-              Error
-            </button>
+            {(['normal', 'loading', 'empty', 'error'] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setViewState(mode)}
+                style={{
+                  background: viewState === mode ? 'var(--primary, #2F6DF6)' : 'transparent',
+                  color: viewState === mode ? '#FFFFFF' : 'var(--muted, #8C9AB8)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '4px 10px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  textTransform: 'capitalize',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {mode === 'loading' ? 'Loading' : mode}
+              </button>
+            ))}
           </div>
 
           <button
@@ -157,34 +181,32 @@ export const Dashboard: React.FC<DashboardProps> = ({
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
-              backgroundColor: 'var(--accent)',
-              color: '#000',
-              fontWeight: 700,
-              fontSize: '13.5px',
-              padding: '9px 18px',
+              gap: '6px',
+              backgroundColor: 'var(--primary, #2F6DF6)',
+              color: '#FFFFFF',
+              fontWeight: 600,
+              fontSize: '13px',
+              padding: '8px 16px',
               borderRadius: '8px',
               border: 'none',
               cursor: 'pointer',
-              boxShadow: '0 0 16px rgba(45, 212, 191, 0.25)',
-              transition: 'all 0.15s ease',
+              boxShadow: '0 2px 10px rgba(47, 109, 246, 0.4)',
+              transition: 'background-color 0.15s ease',
             }}
           >
-            <Plus size={16} strokeWidth={2.5} />
+            <Plus size={15} strokeWidth={2.5} />
             <span>Add Job</span>
           </button>
         </div>
       </div>
 
-      {/* ================================================================== */}
       {/* ERROR STATE */}
-      {/* ================================================================== */}
       {viewState === 'error' && (
         <div
+          className="reference-card"
           style={{
             backgroundColor: 'rgba(239, 68, 68, 0.08)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            borderRadius: 'var(--radius)',
+            borderColor: 'rgba(239, 68, 68, 0.3)',
             padding: '24px',
             marginBottom: '28px',
             display: 'flex',
@@ -194,22 +216,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
         >
           <AlertCircle size={22} style={{ color: '#EF4444', flexShrink: 0, marginTop: '2px' }} />
           <div style={{ flex: 1 }}>
-            <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', color: '#EF4444' }}>
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '15px', color: '#EF4444', fontWeight: 600 }}>
               Connection Error: Failed to refresh tracked opportunities
             </h3>
-            <p style={{ margin: '0 0 14px 0', color: 'var(--text)', fontSize: '13px', lineHeight: 1.5 }}>
-              Could not reach the DevProof API or GitHub rate limit exceeded. Existing assessments are preserved at their commit SHAs.
+            <p style={{ margin: '0 0 14px 0', color: 'var(--text, #E8EEF9)', fontSize: '13px', lineHeight: 1.5 }}>
+              Could not contact the local assessment service. Make sure backend is running or continue with static verification mode.
             </p>
             <button
               onClick={() => setViewState('normal')}
               style={{
-                backgroundColor: 'var(--surface)',
-                border: '1px solid var(--border)',
-                color: 'var(--text)',
+                backgroundColor: '#EF4444',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '6px 14px',
                 fontSize: '12px',
                 fontWeight: 600,
-                padding: '6px 14px',
-                borderRadius: '6px',
                 cursor: 'pointer',
               }}
             >
@@ -219,160 +241,59 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       )}
 
-      {/* ================================================================== */}
-      {/* STATS TILES: Plain-Count Stats ONLY (No readiness % per BRAIN §16.3) */}
-      {/* ================================================================== */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: '16px',
-          marginBottom: '32px',
-        }}
-      >
-        {/* Tile 1 */}
-        <div
-          style={{
-            backgroundColor: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius)',
-            padding: '20px',
-          }}
-        >
-          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted)', display: 'block', marginBottom: '8px' }}>
-            TRACKED OPPORTUNITIES
-          </span>
-          {viewState === 'loading' ? (
-            <div style={{ height: '32px', width: '60px', backgroundColor: 'var(--surface-2)', borderRadius: '4px' }} />
-          ) : (
-            <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text)' }}>
-              {totalTracked}
-            </div>
-          )}
-          <span style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px', display: 'block' }}>
-            Active paired repositories
-          </span>
-        </div>
-
-        {/* Tile 2 */}
-        <div
-          style={{
-            backgroundColor: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius)',
-            padding: '20px',
-          }}
-        >
-          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted)', display: 'block', marginBottom: '8px' }}>
-            REQUIREMENTS ASSESSED
-          </span>
-          {viewState === 'loading' ? (
-            <div style={{ height: '32px', width: '60px', backgroundColor: 'var(--surface-2)', borderRadius: '4px' }} />
-          ) : (
-            <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text)' }}>
-              {totalRequirements}
-            </div>
-          )}
-          <span style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px', display: 'block' }}>
-            Extracted skill benchmarks
-          </span>
-        </div>
-
-        {/* Tile 3 */}
-        <div
-          style={{
-            backgroundColor: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius)',
-            padding: '20px',
-          }}
-        >
-          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--status-demonstrated)', display: 'block', marginBottom: '8px' }}>
-            WITH STRONG EVIDENCE
-          </span>
-          {viewState === 'loading' ? (
-            <div style={{ height: '32px', width: '60px', backgroundColor: 'var(--surface-2)', borderRadius: '4px' }} />
-          ) : (
-            <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--status-demonstrated)' }}>
-              {totalStrongEvidence}
-            </div>
-          )}
-          <span style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px', display: 'block' }}>
-            Verified in analyzed code
-          </span>
-        </div>
-
-        {/* Tile 4 */}
-        <div
-          style={{
-            backgroundColor: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius)',
-            padding: '20px',
-          }}
-        >
-          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--status-partial)', display: 'block', marginBottom: '8px' }}>
-            NEED MORE EVIDENCE
-          </span>
-          {viewState === 'loading' ? (
-            <div style={{ height: '32px', width: '60px', backgroundColor: 'var(--surface-2)', borderRadius: '4px' }} />
-          ) : (
-            <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--status-partial)' }}>
-              {totalNeedEvidence}
-            </div>
-          )}
-          <span style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px', display: 'block' }}>
-            Partial or unverified in scope
-          </span>
-        </div>
-      </div>
-
-      {/* ================================================================== */}
       {/* EMPTY STATE */}
-      {/* ================================================================== */}
       {viewState === 'empty' ? (
         <div
+          className="reference-card"
           style={{
-            backgroundColor: 'var(--surface)',
-            border: '1px dashed var(--border)',
-            borderRadius: 'var(--radius)',
-            padding: '48px 24px',
+            padding: '56px 24px',
             textAlign: 'center',
             marginBottom: '32px',
+            borderStyle: 'dashed',
           }}
         >
           <div
             style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '50%',
-              backgroundColor: 'var(--surface-2)',
+              width: '52px',
+              height: '52px',
+              borderRadius: '14px',
+              backgroundColor: 'var(--surface-2, #101A30)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               margin: '0 auto 16px auto',
-              color: 'var(--accent)',
+              color: 'var(--primary, #2F6DF6)',
+              border: '1px solid var(--border, #1A2748)',
             }}
           >
-            <Layers size={24} />
+            <Layers size={26} />
           </div>
-          <h3 style={{ fontSize: '18px', fontWeight: 600, margin: '0 0 8px 0' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 8px 0', color: 'var(--text, #E8EEF9)' }}>
             No Tracked Opportunities Yet
           </h3>
-          <p style={{ margin: '0 auto 20px auto', maxWidth: '440px', color: 'var(--muted)', fontSize: '13.5px', lineHeight: 1.5 }}>
-            Paste any public internship or software engineering job posting to extract requirements and connect your GitHub repo.
+          <p
+            style={{
+              margin: '0 auto 20px auto',
+              maxWidth: '440px',
+              color: 'var(--muted, #8C9AB8)',
+              fontSize: '13.5px',
+              lineHeight: 1.5,
+            }}
+          >
+            Paste any internship or software engineering job posting to extract requirements and connect your GitHub repo.
           </p>
           <button
             onClick={onAddJob}
             style={{
-              backgroundColor: 'var(--accent)',
-              color: '#000',
-              fontWeight: 700,
+              backgroundColor: 'var(--primary, #2F6DF6)',
+              color: '#FFFFFF',
+              fontWeight: 600,
               fontSize: '13px',
               padding: '10px 20px',
-              borderRadius: '6px',
+              borderRadius: '8px',
               border: 'none',
               cursor: 'pointer',
+              boxShadow: '0 2px 10px rgba(47, 109, 246, 0.4)',
             }}
           >
             + Add First Job Posting
@@ -380,31 +301,260 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       ) : (
         <>
-          {/* ================================================================ */}
-          {/* TRACKED OPPORTUNITIES TABLE per BRAIN §16.3 */}
-          {/* ================================================================ */}
+          {/* Top 3 Stat Cards in a row per reference.png */}
           <div
             style={{
-              backgroundColor: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius)',
-              overflow: 'hidden',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '18px',
+              marginBottom: '26px',
+            }}
+          >
+            {/* Card 1: Active Job */}
+            <StatCard
+              icon={<Briefcase size={20} />}
+              iconBg="linear-gradient(135deg, rgba(47, 109, 246, 0.3) 0%, rgba(30, 58, 138, 0.5) 100%)"
+              iconColor="#60A5FA"
+              label="Active Job"
+              value={viewState === 'loading' ? 'Loading job...' : activeOpportunity?.job?.title || 'Software Developer Intern'}
+              subLine={
+                activeOpportunity?.job?.company
+                  ? `${activeOpportunity.job.company} · Posted 3 days ago`
+                  : 'Google · Posted 3 days ago'
+              }
+              actionText="View Job >"
+              onAction={() => activeOpportunity && onSelectTrack(activeOpportunity.id)}
+            />
+
+            {/* Card 2: Connected Repository */}
+            <StatCard
+              icon={<GitBranch size={20} />}
+              iconBg="linear-gradient(135deg, rgba(100, 116, 139, 0.3) 0%, rgba(51, 65, 85, 0.5) 100%)"
+              iconColor="#CBD5E1"
+              label="Connected Repository"
+              value={
+                viewState === 'loading'
+                  ? 'Loading repo...'
+                  : `${activeOpportunity?.repo?.owner || 'rohan-dev'}/${activeOpportunity?.repo?.name || 'portfolio'}`
+              }
+              subLine="Last commit: 2 hours ago"
+              actionText="View Repo >"
+              onAction={() => activeOpportunity && onSelectTrack(activeOpportunity.id)}
+            />
+
+            {/* Card 3: Last Assessment */}
+            <StatCard
+              icon={<CheckCircle2 size={20} />}
+              iconBg="linear-gradient(135deg, rgba(52, 211, 153, 0.25) 0%, rgba(16, 149, 106, 0.45) 100%)"
+              iconColor="#34D399"
+              label="Last Assessment"
+              value={viewState === 'loading' ? 'Assessing...' : activeOpportunity?.last_assessed_at || '2 hours ago'}
+              subLine="4 skills updated"
+              actionText="View Details >"
+              onAction={() => activeOpportunity && onSelectTrack(activeOpportunity.id)}
+            />
+          </div>
+
+          {/* Main 2-Column Grid: Left (Skills Overview) / Right (Ring + Agent Activity) */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1fr)',
+              gap: '20px',
               marginBottom: '32px',
             }}
           >
+            {/* Left: Skill Assessment Overview Card */}
+            <div className="reference-card" style={{ padding: '24px' }}>
+              <div style={{ marginBottom: '20px' }}>
+                <h2
+                  style={{
+                    fontSize: '16px',
+                    fontWeight: 700,
+                    margin: '0 0 4px 0',
+                    color: 'var(--text, #E8EEF9)',
+                    letterSpacing: '-0.02em',
+                  }}
+                >
+                  Skill Assessment Overview
+                </h2>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--muted, #8C9AB8)' }}>
+                  Evidence-based analysis of your code against job requirements.
+                </p>
+              </div>
+
+              {/* Skill list rows */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {skillsToDisplay.map((skill, idx) => (
+                  <div
+                    key={skill.name || idx}
+                    onClick={() => activeOpportunity && onSelectTrack(activeOpportunity.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '14px',
+                      padding: '12px 14px',
+                      borderRadius: '10px',
+                      backgroundColor: 'transparent',
+                      border: '1px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.15s ease, border-color 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--surface-2, #101A30)';
+                      e.currentTarget.style.borderColor = 'var(--border, #1A2748)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.borderColor = 'transparent';
+                    }}
+                  >
+                    {/* Skill Lucide Tile */}
+                    <SkillIconTile skill={skill.name} size="md" />
+
+                    {/* Skill Name */}
+                    <span
+                      style={{
+                        fontSize: '13.5px',
+                        fontWeight: 600,
+                        color: 'var(--text, #E8EEF9)',
+                        width: '90px',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {skill.name}
+                    </span>
+
+                    {/* Status Pill */}
+                    <div style={{ width: '150px', flexShrink: 0 }}>
+                      <StatusPill status={skill.status} size="sm" />
+                    </div>
+
+                    {/* Location / Evidence description */}
+                    <div
+                      style={{
+                        flex: 1,
+                        fontSize: '12px',
+                        color: 'var(--muted, #8C9AB8)',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {skill.location}
+                    </div>
+
+                    {/* Updated Chip */}
+                    <div style={{ flexShrink: 0 }}>
+                      <UpdatedChip
+                        type={skill.changeType}
+                        count={skill.changeCount}
+                        size="sm"
+                      />
+                    </div>
+
+                    <ChevronRight size={14} style={{ color: 'var(--muted, #8C9AB8)', flexShrink: 0 }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right Column: Segmented Ring & Agent Activity */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Segmented Ring Widget */}
+              <SegmentedRing
+                demonstrated={demonstratedCount}
+                partial={partialCount}
+                notDemonstrated={notDemCount}
+                total={totalCount}
+              />
+
+              {/* Agent Activity Widget */}
+              <div className="reference-card" style={{ padding: '20px 22px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: '14px',
+                  }}
+                >
+                  <h3
+                    style={{
+                      fontSize: '14.5px',
+                      fontWeight: 700,
+                      color: 'var(--text, #E8EEF9)',
+                      margin: 0,
+                    }}
+                  >
+                    Agent Activity
+                  </h3>
+                  <LiveChip label="Live" size="sm" />
+                </div>
+
+                {/* Agent Rows */}
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <AgentRow
+                    agent="Code Analyzer"
+                    message="Parsed 12 files for skill matching"
+                    timestamp="2m ago"
+                  />
+                  <AgentRow
+                    agent="Evidence Collector"
+                    message="Found 3 new evidence snippets"
+                    timestamp="3m ago"
+                  />
+                  <AgentRow
+                    agent="Verifier"
+                    message="Validated 3 citations"
+                    timestamp="4m ago"
+                  />
+                  <AgentRow
+                    agent="Impact Analyzer"
+                    message="Detected 2 changed skills"
+                    timestamp="5m ago"
+                  />
+                </div>
+
+                {/* View Full Activity Link */}
+                <div style={{ marginTop: '14px', paddingTop: '10px' }}>
+                  <button
+                    onClick={onNavigateActivity}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--primary, #2F6DF6)',
+                      fontSize: '12.5px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: 0,
+                    }}
+                  >
+                    <span>View full activity →</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tracked Opportunities Table (Detailed view per BRAIN §16.3) */}
+          <div className="reference-card" style={{ overflow: 'hidden', marginBottom: '32px' }}>
             <div
               style={{
-                padding: '16px 20px',
-                borderBottom: '1px solid var(--border)',
+                padding: '16px 22px',
+                borderBottom: '1px solid var(--border, #1A2748)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
               }}
             >
-              <h2 style={{ fontSize: '16px', fontWeight: 600, margin: 0 }}>
+              <h2 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: 'var(--text, #E8EEF9)' }}>
                 Tracked Opportunities
               </h2>
-              <span style={{ fontSize: '12px', color: 'var(--muted)' }}>
+              <span style={{ fontSize: '12px', color: 'var(--muted, #8C9AB8)' }}>
                 {opportunities.length} tracked opportunity
               </span>
             </div>
@@ -412,172 +562,116 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--muted)', fontSize: '11.5px' }}>
-                    <th style={{ padding: '12px 20px', fontWeight: 600 }}>JOB & COMPANY</th>
+                  <tr style={{ borderBottom: '1px solid var(--border, #1A2748)', color: 'var(--muted, #8C9AB8)', fontSize: '11px' }}>
+                    <th style={{ padding: '12px 22px', fontWeight: 600 }}>JOB & COMPANY</th>
                     <th style={{ padding: '12px 16px', fontWeight: 600 }}>REPOSITORY</th>
                     <th style={{ padding: '12px 16px', fontWeight: 600 }}>ANALYZED COMMIT</th>
                     <th style={{ padding: '12px 16px', fontWeight: 600 }}>LAST ASSESSED</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>EVIDENCE SUMMARY</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>WATCHER</th>
-                    <th style={{ padding: '12px 20px', fontWeight: 600, textAlign: 'right' }}>ACTION</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>STATUS SUMMARY</th>
+                    <th style={{ padding: '12px 22px', fontWeight: 600, textAlign: 'right' }}>ACTION</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {viewState === 'loading'
-                    ? [1, 2].map((i) => (
-                        <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <td colSpan={7} style={{ padding: '20px' }}>
-                            <div style={{ height: '24px', backgroundColor: 'var(--surface-2)', borderRadius: '4px' }} />
-                          </td>
-                        </tr>
-                      ))
-                    : opportunities.map((opp) => (
-                        <tr
-                          key={opp.id}
+                  {opportunities.map((opp) => (
+                    <tr
+                      key={opp.id}
+                      style={{
+                        borderBottom: '1px solid rgba(26, 39, 72, 0.5)',
+                        transition: 'background-color 0.15s ease',
+                      }}
+                    >
+                      <td style={{ padding: '16px 22px' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text, #E8EEF9)', marginBottom: '3px' }}>
+                          {opp.job.title}
+                        </div>
+                        <div style={{ color: 'var(--muted, #8C9AB8)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span>{opp.job.company}</span>
+                          <a
+                            href={opp.job.source_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              color: 'var(--primary, #2F6DF6)',
+                              textDecoration: 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '2px',
+                            }}
+                          >
+                            Source <ExternalLink size={10} />
+                          </a>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: '16px 16px' }}>
+                        <div style={{ fontWeight: 500, color: 'var(--text, #E8EEF9)' }}>
+                          {opp.repo.owner}/{opp.repo.name}
+                        </div>
+                        <div style={{ color: 'var(--muted, #8C9AB8)', fontSize: '11.5px' }}>
+                          branch: {opp.branch}
+                        </div>
+                      </td>
+
+                      <td style={{ padding: '16px 16px' }}>
+                        <ShaChip sha={opp.last_seen_sha} size="sm" />
+                      </td>
+
+                      <td style={{ padding: '16px 16px', color: 'var(--muted, #8C9AB8)', fontSize: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <Clock size={12} />
+                          <span>{opp.last_assessed_at}</span>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: '16px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+                          <span style={{ color: '#34D399', fontWeight: 600 }}>
+                            {opp.status_summary.demonstrated} ✓
+                          </span>
+                          <span style={{ color: '#FBBF24', fontWeight: 600 }}>
+                            {opp.status_summary.partial} ◐
+                          </span>
+                          <span style={{ color: '#94A3B8', fontWeight: 600 }}>
+                            {opp.status_summary.not_demonstrated} ○
+                          </span>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: '16px 22px', textAlign: 'right' }}>
+                        <button
+                          onClick={() => onSelectTrack(opp.id)}
                           style={{
-                            borderBottom: '1px solid var(--border)',
-                            transition: 'background-color 0.1s ease',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            backgroundColor: 'var(--surface-2, #101A30)',
+                            border: '1px solid var(--border, #1A2748)',
+                            color: 'var(--text, #E8EEF9)',
+                            padding: '6px 12px',
+                            borderRadius: '6px',
+                            fontSize: '12.5px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
                           }}
                         >
-                          {/* Job Title & Company */}
-                          <td style={{ padding: '16px 20px' }}>
-                            <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: '3px' }}>
-                              {opp.job.title}
-                            </div>
-                            <div style={{ color: 'var(--muted)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span>{opp.job.company}</span>
-                              <a
-                                href={opp.job.source_url}
-                                target="_blank"
-                                rel="noreferrer"
-                                style={{
-                                  color: 'var(--accent)',
-                                  textDecoration: 'none',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '2px',
-                                }}
-                              >
-                                Source <ExternalLink size={11} />
-                              </a>
-                            </div>
-                          </td>
-
-                          {/* Repo */}
-                          <td style={{ padding: '16px 16px' }}>
-                            <div style={{ fontWeight: 500 }}>
-                              {opp.repo.owner}/{opp.repo.name}
-                            </div>
-                            <div style={{ color: 'var(--muted)', fontSize: '12px' }}>
-                              branch: {opp.branch}
-                            </div>
-                          </td>
-
-                          {/* Commit Chip */}
-                          <td style={{ padding: '16px 16px' }}>
-                            <span
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '3px 8px',
-                                borderRadius: '6px',
-                                backgroundColor: 'var(--surface-2)',
-                                border: '1px solid var(--border)',
-                                fontFamily: 'JetBrains Mono',
-                                fontSize: '12px',
-                                color: 'var(--accent)',
-                              }}
-                            >
-                              <GitCommit size={12} />
-                              {opp.last_seen_sha.substring(0, 7)}
-                            </span>
-                          </td>
-
-                          {/* Last Assessed */}
-                          <td style={{ padding: '16px 16px', color: 'var(--muted)', fontSize: '12.5px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                              <Clock size={12} />
-                              <span>{opp.last_assessed_at}</span>
-                            </div>
-                          </td>
-
-                          {/* Status Mini-Summary */}
-                          <td style={{ padding: '16px 16px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
-                              <span style={{ color: 'var(--status-demonstrated)', fontWeight: 600 }}>
-                                {opp.status_summary.demonstrated} ✓
-                              </span>
-                              <span style={{ color: 'var(--status-partial)', fontWeight: 600 }}>
-                                {opp.status_summary.partial} ◐
-                              </span>
-                              <span style={{ color: 'var(--status-not-demonstrated)', fontWeight: 600 }}>
-                                {opp.status_summary.not_demonstrated} ○
-                              </span>
-                            </div>
-                          </td>
-
-                          {/* Watcher State */}
-                          <td style={{ padding: '16px 16px' }}>
-                            <div
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '5px',
-                                fontSize: '11.5px',
-                                color: 'var(--muted)',
-                              }}
-                            >
-                              <Radio size={12} style={{ color: 'var(--accent)' }} />
-                              <span>{opp.watcher_mode === 'webhook' ? 'Webhook' : 'Polling'}</span>
-                            </div>
-                          </td>
-
-                          {/* Actions */}
-                          <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                            <button
-                              onClick={() => onSelectTrack(opp.id)}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                backgroundColor: 'var(--surface-2)',
-                                border: '1px solid var(--border)',
-                                color: 'var(--text)',
-                                padding: '6px 12px',
-                                borderRadius: '6px',
-                                fontSize: '12.5px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              <span>View Evidence</span>
-                              <ChevronRight size={13} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                          <span>View Evidence</span>
+                          <ChevronRight size={13} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* ================================================================ */}
-          {/* RECENT REPOSITORY CHANGES & NEXT ACTIONS (2-COLUMN GRID) */}
-          {/* ================================================================ */}
+          {/* Recent Repository Changes & Next Actions */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '20px' }}>
             {/* Recent Changes Box */}
-            <div
-              style={{
-                backgroundColor: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius)',
-                padding: '20px',
-              }}
-            >
+            <div className="reference-card" style={{ padding: '20px 22px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                <TrendingUp size={16} style={{ color: 'var(--accent)' }} />
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>
+                <TrendingUp size={16} style={{ color: 'var(--primary, #2F6DF6)' }} />
+                <h3 style={{ margin: 0, fontSize: '14.5px', fontWeight: 700, color: 'var(--text, #E8EEF9)' }}>
                   Recent Repository Changes (Push Detected)
                 </h3>
               </div>
@@ -586,9 +680,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <div
                   key={change.id}
                   style={{
-                    backgroundColor: 'var(--surface-2)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '8px',
+                    backgroundColor: 'var(--surface-2, #101A30)',
+                    border: '1px solid var(--border, #1A2748)',
+                    borderRadius: '10px',
                     padding: '14px 16px',
                     display: 'flex',
                     flexDirection: 'column',
@@ -597,29 +691,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
-                      <span style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--text)' }}>
+                      <span style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--text, #E8EEF9)' }}>
                         {change.commit_message}
                       </span>
-                      <div style={{ color: 'var(--muted)', fontSize: '12px', marginTop: '2px' }}>
+                      <div style={{ color: 'var(--muted, #8C9AB8)', fontSize: '12px', marginTop: '2px' }}>
                         by {change.author} • {change.timestamp}
                       </div>
                     </div>
-                    <span
-                      style={{
-                        fontFamily: 'JetBrains Mono',
-                        fontSize: '11px',
-                        backgroundColor: 'var(--surface)',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        border: '1px solid var(--border)',
-                        color: 'var(--accent)',
-                      }}
-                    >
-                      {change.commit_sha.substring(0, 7)}
-                    </span>
+                    <ShaChip sha={change.commit_sha} size="sm" />
                   </div>
 
-                  {/* Status transitions pill list */}
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     {change.transitions.map((t, idx) => (
                       <div
@@ -632,18 +713,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           padding: '3px 8px',
                           borderRadius: '6px',
                           backgroundColor:
-                            t.change === 'improved'
-                              ? 'rgba(45, 212, 191, 0.1)'
-                              : 'var(--surface)',
+                            t.change === 'improved' ? 'rgba(52, 211, 153, 0.12)' : 'var(--surface-2, #101A30)',
                           border: `1px solid ${
-                            t.change === 'improved' ? 'var(--accent)' : 'var(--border)'
+                            t.change === 'improved' ? 'rgba(52, 211, 153, 0.3)' : 'var(--border, #1A2748)'
                           }`,
-                          color: t.change === 'improved' ? 'var(--accent)' : 'var(--muted)',
+                          color: t.change === 'improved' ? '#34D399' : 'var(--muted, #8C9AB8)',
                           fontWeight: t.change === 'improved' ? 600 : 500,
                         }}
                       >
                         <span>{t.skill}:</span>
-                        <span>{t.before === 'NOT_DEMONSTRATED' ? '○' : '◐'} → {t.after === 'DEMONSTRATED' ? '✓' : '◐'}</span>
+                        <span>
+                          {t.before === 'NOT_DEMONSTRATED' ? '○' : '◐'} → {t.after === 'DEMONSTRATED' ? '✓' : '◐'}
+                        </span>
                         {t.change === 'improved' && <span>(Improved)</span>}
                       </div>
                     ))}
@@ -653,17 +734,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
 
             {/* Recommended Next Actions Box */}
-            <div
-              style={{
-                backgroundColor: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius)',
-                padding: '20px',
-              }}
-            >
+            <div className="reference-card" style={{ padding: '20px 22px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                <Sparkles size={16} style={{ color: 'var(--accent)' }} />
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>
+                <Sparkles size={16} style={{ color: 'var(--primary, #2F6DF6)' }} />
+                <h3 style={{ margin: 0, fontSize: '14.5px', fontWeight: 700, color: 'var(--text, #E8EEF9)' }}>
                   Recommended Next Actions
                 </h3>
               </div>
@@ -673,9 +747,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <div
                     key={action.id}
                     style={{
-                      backgroundColor: 'var(--surface-2)',
-                      border: '1px solid var(--border)',
-                      borderRadius: '8px',
+                      backgroundColor: 'var(--surface-2, #101A30)',
+                      border: '1px solid var(--border, #1A2748)',
+                      borderRadius: '10px',
                       padding: '12px 14px',
                       display: 'flex',
                       justifyContent: 'space-between',
@@ -684,7 +758,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   >
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-                        <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text)' }}>
+                        <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text, #E8EEF9)' }}>
                           {action.skill}
                         </span>
                         <span
@@ -695,20 +769,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             borderRadius: '4px',
                             backgroundColor:
                               action.priority === 'must'
-                                ? 'rgba(45, 212, 191, 0.15)'
-                                : 'var(--surface)',
-                            color: action.priority === 'must' ? 'var(--accent)' : 'var(--muted)',
+                                ? 'rgba(47, 109, 246, 0.15)'
+                                : 'rgba(148, 163, 184, 0.1)',
+                            color: action.priority === 'must' ? '#60A5FA' : 'var(--muted, #8C9AB8)',
                           }}
                         >
                           {action.priority.toUpperCase()}
                         </span>
                       </div>
-                      <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--muted)', lineHeight: 1.4 }}>
+                      <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted, #8C9AB8)', lineHeight: 1.4 }}>
                         {action.detail}
                       </p>
                     </div>
 
-                    <ArrowRight size={14} style={{ color: 'var(--muted)', flexShrink: 0, marginLeft: '12px' }} />
+                    <ArrowRight size={14} style={{ color: 'var(--muted, #8C9AB8)', flexShrink: 0, marginLeft: '12px' }} />
                   </div>
                 ))}
               </div>

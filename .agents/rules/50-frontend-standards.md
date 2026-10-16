@@ -8,3 +8,4 @@ trigger: always_on
 - Build against `docs/fixtures/*.json` via `VITE_USE_FIXTURES=1` first; API types from `openapi-typescript`. No hardcoded secrets; HTML-escape all repo/job text; never render raw HTML.
 - No readiness percentage anywhere. Plain counts only.
 - Every state: loading skeleton, empty (instructive), error (with retry). `npx tsc --noEmit` and `npm run build` must pass before a phase is done.
+- Visual source of truth: docs/design/reference.png + docs/design/DESIGN-REFERENCE.md. Where they conflict with BRAIN §16.1 visuals, the design reference wins; where they conflict with BRAIN §3 invariants, the invariants win.

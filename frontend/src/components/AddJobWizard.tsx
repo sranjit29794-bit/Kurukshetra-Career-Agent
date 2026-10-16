@@ -18,6 +18,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import type { JobDraft, Requirement, RepoValidationResult, SourceType } from '../types';
+import { StepperHeader } from './StepperHeader';
 
 interface AddJobWizardProps {
   onComplete: (job: JobDraft, repoUrl: string) => void;
@@ -220,74 +221,15 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({ onComplete, onCancel
   return (
     <div style={{ maxWidth: '840px', margin: '0 auto', padding: '32px 16px' }}>
       {/* Wizard Progress Stepper */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: '32px',
-          borderBottom: '1px solid var(--border)',
-          paddingBottom: '20px',
-        }}
-      >
-        {[
-          { num: 1, label: 'Job Source' },
-          { num: 2, label: 'Review Requirements' },
-          { num: 3, label: 'Connect Repository' },
-        ].map((s, idx) => {
-          const isActive = step === s.num;
-          const isDone = step > s.num;
-          return (
-            <React.Fragment key={s.num}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    backgroundColor: isDone
-                      ? 'var(--status-demonstrated)'
-                      : isActive
-                      ? 'var(--accent)'
-                      : 'var(--surface-2)',
-                    color: isDone || isActive ? '#000' : 'var(--muted)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 700,
-                    fontSize: '13px',
-                    boxShadow: isActive ? '0 0 10px rgba(45, 212, 191, 0.4)' : 'none',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  {isDone ? <Check size={16} strokeWidth={3} /> : s.num}
-                </div>
-                <div>
-                  <span
-                    style={{
-                      fontSize: '13px',
-                      fontWeight: isActive ? 600 : 500,
-                      color: isActive ? 'var(--text)' : 'var(--muted)',
-                    }}
-                  >
-                    {s.label}
-                  </span>
-                </div>
-              </div>
-              {idx < 2 && (
-                <div
-                  style={{
-                    flex: 1,
-                    height: '1px',
-                    backgroundColor: step > idx + 1 ? 'var(--status-demonstrated)' : 'var(--border)',
-                    margin: '0 16px',
-                  }}
-                />
-              )}
-            </React.Fragment>
-          );
-        })}
-      </div>
+      <StepperHeader
+        steps={[
+          { id: 1, label: 'Job URL' },
+          { id: 2, label: 'Review Requirements' },
+          { id: 3, label: 'Connect Repository' },
+        ]}
+        currentStep={step}
+        onStepClick={(s) => setStep(s as 1 | 2 | 3)}
+      />
 
       {/* ==================================================================== */}
       {/* STEP 1: JOB SOURCE */}

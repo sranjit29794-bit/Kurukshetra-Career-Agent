@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
 import {
   ExternalLink,
-  GitCommit,
-  Radio,
   Activity,
   ArrowUpDown,
   ArrowLeft,
+  RefreshCw,
+  Clock,
 } from 'lucide-react';
-import { StatusBadge } from './StatusBadge';
+import { StatusPill } from './StatusPill';
+import { ShaChip } from './ShaChip';
+import { WatcherChip } from './WatcherChip';
+import { UpdatedChip } from './UpdatedChip';
+import { InfoBanner } from './InfoBanner';
+import { SkillIconTile } from './SkillIconTile';
 import { EvidenceCard } from './EvidenceCard';
 import { CodeViewer } from './CodeViewer';
 import { AgentActivityDrawer } from './AgentActivityDrawer';
@@ -83,7 +88,6 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ track, onBackToDashboa
       const posB = track.job.requirements.find((r) => r.id === b.requirement_id)?.position || 0;
       return posA - posB;
     }
-    // gaps_first: NOT_DEMONSTRATED (0) > PARTIAL (1) > DEMONSTRATED (2) > UNABLE (3)
     const rank = (status: string) => {
       switch (status) {
         case 'NOT_DEMONSTRATED':
@@ -108,14 +112,12 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ track, onBackToDashboa
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 85px)' }}>
-      {/* ==================================================================== */}
-      {/* S3 HEADER BAR per BRAIN §16.3 */}
-      {/* ==================================================================== */}
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 56px)' }}>
+      {/* S3 HEADER BAR matching reference.png */}
       <div
         style={{
-          borderBottom: '1px solid var(--border)',
-          backgroundColor: 'var(--surface)',
+          borderBottom: '1px solid var(--border, #1A2748)',
+          backgroundColor: 'var(--surface, #0A1228)',
           padding: '12px 24px',
           display: 'flex',
           justifyContent: 'space-between',
@@ -131,32 +133,33 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ track, onBackToDashboa
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              backgroundColor: 'var(--surface-2)',
-              border: '1px solid var(--border)',
-              color: 'var(--text)',
+              backgroundColor: 'var(--surface-2, #101A30)',
+              border: '1px solid var(--border, #1A2748)',
+              color: 'var(--text, #E8EEF9)',
               fontSize: '12.5px',
               fontWeight: 600,
               padding: '6px 12px',
-              borderRadius: '6px',
+              borderRadius: '8px',
               cursor: 'pointer',
+              transition: 'background-color 0.15s ease',
             }}
           >
             <ArrowLeft size={14} />
-            <span>Dashboard</span>
+            <span>Back to Overview</span>
           </button>
 
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h1 style={{ fontSize: '17px', fontWeight: 700, margin: 0, color: 'var(--text)' }}>
+              <h1 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: 'var(--text, #E8EEF9)' }}>
                 {track.job.title}
               </h1>
-              <span style={{ color: 'var(--muted)', fontSize: '13px' }}>at {track.job.company}</span>
+              <span style={{ color: 'var(--muted, #8C9AB8)', fontSize: '13px' }}>at {track.job.company}</span>
               <a
                 href={track.job.source_url}
                 target="_blank"
                 rel="noreferrer"
                 style={{
-                  color: 'var(--accent)',
+                  color: 'var(--primary, #2F6DF6)',
                   fontSize: '12px',
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -168,7 +171,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ track, onBackToDashboa
               </a>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', color: 'var(--muted, #8C9AB8)', marginTop: '2px' }}>
               <span>repo: <strong>{track.repo.owner}/{track.repo.name}</strong></span>
               <span>•</span>
               <span>branch: <code>{track.branch}</code></span>
@@ -177,7 +180,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ track, onBackToDashboa
                 title="Click to view scope exclusion boundaries"
                 onClick={() => setIsScopeModalOpen(true)}
                 style={{
-                  color: 'var(--accent)',
+                  color: 'var(--primary, #2F6DF6)',
                   cursor: 'pointer',
                   textDecoration: 'underline',
                   textUnderlineOffset: '2px',
@@ -189,50 +192,32 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ track, onBackToDashboa
           </div>
         </div>
 
-        {/* Right Header Chips */}
+        {/* Right Header: SHA, Timestamp, Watcher, Activity Drawer */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {/* Analyzed Commit SHA Chip */}
-          <a
-            href={`https://github.com/${track.repo.owner}/${track.repo.name}/commit/${track.last_seen_sha}`}
-            target="_blank"
-            rel="noreferrer"
-            title="Open commit on GitHub"
+          <ShaChip sha={track.last_seen_sha} size="sm" />
+
+          {/* Last Analyzed Timestamp */}
+          <div
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '5px',
               padding: '4px 10px',
-              borderRadius: '6px',
-              backgroundColor: 'var(--surface-2)',
-              border: '1px solid var(--border)',
-              fontFamily: 'JetBrains Mono',
+              borderRadius: 'var(--radius-pill, 8px)',
+              backgroundColor: 'var(--surface-2, #101A30)',
+              border: '1px solid var(--border, #1A2748)',
               fontSize: '12px',
-              color: 'var(--accent)',
-              textDecoration: 'none',
+              color: 'var(--muted, #8C9AB8)',
             }}
           >
-            <GitCommit size={13} />
-            <span>{track.last_seen_sha.substring(0, 7)}</span>
-            <ExternalLink size={10} style={{ color: 'var(--muted)' }} />
-          </a>
+            <Clock size={12} />
+            <span>Last analyzed: {track.last_assessed_at}</span>
+            <RefreshCw size={11} style={{ color: 'var(--primary, #2F6DF6)', cursor: 'pointer', marginLeft: '2px' }} />
+          </div>
 
           {/* Watcher Chip */}
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '4px 10px',
-              borderRadius: '6px',
-              backgroundColor: 'var(--surface-2)',
-              border: '1px solid var(--border)',
-              fontSize: '12px',
-              color: 'var(--text)',
-            }}
-          >
-            <Radio size={12} style={{ color: 'var(--accent)' }} />
-            <span>{track.watcher_mode === 'webhook' ? '● Webhook' : '↻ Polling (15s)'}</span>
-          </div>
+          <WatcherChip mode={track.watcher_mode} compact size="sm" />
 
           {/* Agent Activity Drawer Toggle */}
           <button
@@ -241,25 +226,25 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ track, onBackToDashboa
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '6px 12px',
-              borderRadius: '6px',
-              backgroundColor: isDrawerOpen ? 'var(--accent)' : 'var(--surface-2)',
-              color: isDrawerOpen ? '#000' : 'var(--text)',
-              border: '1px solid var(--border)',
+              padding: '5px 12px',
+              borderRadius: '8px',
+              backgroundColor: isDrawerOpen ? 'var(--primary, #2F6DF6)' : 'var(--surface-2, #101A30)',
+              color: isDrawerOpen ? '#FFFFFF' : 'var(--text, #E8EEF9)',
+              border: '1px solid var(--border, #1A2748)',
               fontSize: '12px',
               fontWeight: 600,
               cursor: 'pointer',
             }}
           >
-            <Activity size={14} />
+            <Activity size={13} />
             <span>Agent Feed</span>
             <span
               style={{
                 fontSize: '10px',
                 padding: '1px 5px',
                 borderRadius: '8px',
-                backgroundColor: isDrawerOpen ? '#000' : 'var(--accent)',
-                color: isDrawerOpen ? 'var(--accent)' : '#000',
+                backgroundColor: isDrawerOpen ? '#FFFFFF' : 'var(--primary, #2F6DF6)',
+                color: isDrawerOpen ? 'var(--primary, #2F6DF6)' : '#FFFFFF',
                 fontWeight: 700,
               }}
             >
@@ -269,9 +254,10 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ track, onBackToDashboa
         </div>
       </div>
 
-      {/* ==================================================================== */}
+      {/* Persistent Subtle Absence ≠ Failure Banner Strip */}
+      <InfoBanner />
+
       {/* THREE-PANE LAYOUT per BRAIN §16.3 */}
-      {/* ==================================================================== */}
       <div
         style={{
           display: 'grid',
@@ -280,13 +266,11 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ track, onBackToDashboa
           overflow: 'hidden',
         }}
       >
-        {/* ------------------------------------------------------------------ */}
         {/* LEFT PANE: REQUIREMENTS LIST */}
-        {/* ------------------------------------------------------------------ */}
         <div
           style={{
-            borderRight: '1px solid var(--border)',
-            backgroundColor: 'var(--surface)',
+            borderRight: '1px solid var(--border, #1A2748)',
+            backgroundColor: 'var(--surface, #0A1228)',
             display: 'flex',
             flexDirection: 'column',
             overflowY: 'auto',
@@ -296,14 +280,14 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ track, onBackToDashboa
           <div
             style={{
               padding: '12px 16px',
-              borderBottom: '1px solid var(--border)',
+              borderBottom: '1px solid var(--border, #1A2748)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              backgroundColor: 'var(--surface-2)',
+              backgroundColor: 'var(--surface-2, #101A30)',
             }}
           >
-            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted, #8C9AB8)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Requirements ({track.assessments.length})
             </span>
 
@@ -315,7 +299,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ track, onBackToDashboa
                 gap: '4px',
                 background: 'transparent',
                 border: 'none',
-                color: 'var(--accent)',
+                color: 'var(--primary, #2F6DF6)',
                 fontSize: '11.5px',
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -333,6 +317,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ track, onBackToDashboa
               const req = track.job.requirements.find((r) => r.id === asmt.requirement_id);
               const isSelected = selectedReqId === asmt.requirement_id;
               const isUpdated = asmt.reassessed && asmt.evidence.length > 0;
+              const skillName = req ? req.name : asmt.requirement_id;
 
               return (
                 <div
@@ -344,61 +329,39 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ track, onBackToDashboa
                     }
                   }}
                   style={{
-                    padding: '14px 16px',
-                    borderBottom: '1px solid var(--border)',
-                    backgroundColor: isSelected ? 'var(--surface-2)' : 'transparent',
-                    borderLeft: isSelected ? '3px solid var(--accent)' : '3px solid transparent',
+                    padding: '12px 16px',
+                    borderBottom: '1px solid var(--border, #1A2748)',
+                    backgroundColor: isSelected ? 'var(--surface-2, #101A30)' : 'transparent',
+                    borderLeft: isSelected ? '3px solid var(--primary, #2F6DF6)' : '3px solid transparent',
                     cursor: 'pointer',
-                    transition: 'all 0.1s ease',
+                    transition: 'all 0.15s ease',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <span style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--text)' }}>
-                      {req ? req.name : asmt.requirement_id}
-                    </span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <SkillIconTile skill={skillName} size="sm" />
+                      <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text, #E8EEF9)' }}>
+                        {skillName}
+                      </span>
+                    </div>
 
-                    {/* UPDATED / Unchanged Chip */}
-                    {isUpdated ? (
-                      <span
-                        style={{
-                          fontSize: '10px',
-                          fontWeight: 700,
-                          padding: '1px 5px',
-                          borderRadius: '4px',
-                          backgroundColor: 'rgba(45, 212, 191, 0.15)',
-                          color: 'var(--accent)',
-                          border: '1px solid var(--accent)',
-                        }}
-                      >
-                        UPDATED
-                      </span>
-                    ) : (
-                      <span
-                        style={{
-                          fontSize: '10px',
-                          color: 'var(--muted)',
-                          padding: '1px 4px',
-                        }}
-                      >
-                        Unchanged
-                      </span>
+                    {isUpdated && (
+                      <UpdatedChip type="reassessed" label="UPDATED" size="sm" />
                     )}
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <StatusBadge status={asmt.status} size="sm" showLabel={true} />
-                    </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: '36px' }}>
+                    <StatusPill status={asmt.status} size="sm" showLabel={true} />
 
                     {req && (
                       <span
                         style={{
-                          fontSize: '10.5px',
-                          color: 'var(--muted)',
-                          backgroundColor: 'var(--surface)',
+                          fontSize: '10px',
+                          color: 'var(--muted, #8C9AB8)',
+                          backgroundColor: 'var(--surface-card, #0A1228)',
                           padding: '1px 5px',
-                          borderRadius: '3px',
-                          border: '1px solid var(--border)',
+                          borderRadius: '4px',
+                          border: '1px solid var(--border, #1A2748)',
                         }}
                       >
                         {req.priority.toUpperCase()}
@@ -411,13 +374,11 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ track, onBackToDashboa
           </div>
         </div>
 
-        {/* ------------------------------------------------------------------ */}
         {/* CENTER PANE: EVIDENCE CARD */}
-        {/* ------------------------------------------------------------------ */}
         <div
           style={{
-            borderRight: '1px solid var(--border)',
-            backgroundColor: 'var(--bg)',
+            borderRight: '1px solid var(--border, #1A2748)',
+            backgroundColor: 'var(--bg, #050A1A)',
             overflowY: 'auto',
             padding: '16px',
           }}
@@ -433,10 +394,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ track, onBackToDashboa
           )}
         </div>
 
-        {/* ------------------------------------------------------------------ */}
-        {/* RIGHT PANE: CODE VIEWER AT ANALYZED SHA */}
-        {/* ------------------------------------------------------------------ */}
-        <div style={{ overflowY: 'hidden', padding: '16px' }}>
+        {/* RIGHT PANE: CODE VIEWER */}
+        <div style={{ overflowY: 'hidden', padding: '16px', backgroundColor: 'var(--bg, #050A1A)' }}>
           <CodeViewer
             filePath={activeCitation.filePath}
             sha={track.last_seen_sha}

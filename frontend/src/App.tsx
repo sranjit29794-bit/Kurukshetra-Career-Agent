@@ -1,13 +1,37 @@
-import { useState } from 'react';
-import { Header } from './components/Header';
+import { useState, useEffect } from 'react';
+import { Sidebar } from './components/Sidebar';
+import { TopBar } from './components/TopBar';
 import { Dashboard } from './components/Dashboard';
 import { AddJobWizard } from './components/AddJobWizard';
 import { ResultsView } from './components/ResultsView';
+import { RepositoriesView } from './components/RepositoriesView';
+import { AgentActivityView } from './components/AgentActivityView';
+import { CompareView } from './components/CompareView';
+import { DevComponentsShowcase } from './components/DevComponentsShowcase';
 import type { JobDraft, TrackOpportunity, RecentChange, NextAction } from './types';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'add_job' | 'evidence_detail'>('dashboard');
+  const [currentPath, setCurrentPath] = useState<string>(
+    typeof window !== 'undefined' ? window.location.pathname || '/' : '/'
+  );
   const [selectedTrackId, setSelectedTrackId] = useState<string>('track_demo');
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname || '/');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigate = (path: string) => {
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', path);
+    }
+    setCurrentPath(path);
+    window.scrollTo(0, 0);
+  };
 
   // Tracked Opportunities state
   const [opportunities, setOpportunities] = useState<TrackOpportunity[]>([
@@ -87,7 +111,7 @@ export default function App() {
           requirement_id: 'req_rest_api',
           status: 'DEMONSTRATED',
           strength: 'strong',
-          summary: 'FastAPI routes now invoke persistent SQL queries from db.py with typed Pydantic response models.',
+          summary: 'FastAPI routes invoke persistent SQL queries from db.py with typed Pydantic response models.',
           limitation: 'Route handlers catch generic exceptions without specific HTTP status code differentiation.',
           next_step: 'Implement dedicated HTTP 404 / 400 exception handlers.',
           carried_forward: false,
@@ -268,7 +292,6 @@ export default function App() {
     },
   ];
 
-  // Handle new job submission from wizard
   const handleWizardComplete = (job: JobDraft, repoUrl: string) => {
     const newOpportunity: TrackOpportunity = {
       id: `track_${Date.now()}`,
@@ -309,50 +332,111 @@ export default function App() {
     };
 
     setOpportunities((prev) => [newOpportunity, ...prev]);
-    setCurrentView('dashboard');
+    navigate('/');
   };
 
   const activeTrack = opportunities.find((o) => o.id === selectedTrackId) || opportunities[0];
 
-  return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
-      {/* Top Header Bar */}
-      <Header
-        currentView={currentView === 'add_job' ? 'add_job' : 'dashboard'}
-        onNavigate={(view) => setCurrentView(view)}
-        watcherMode="polling"
-        nextPollInSeconds={15}
-        llmMode="ai_on"
-        rateLimitRemaining={4982}
-      />
-
-      {/* Main Content Area */}
-      {currentView === 'dashboard' && (
-        <Dashboard
-          opportunities={opportunities}
-          recentChanges={recentChanges}
-          nextActions={nextActions}
-          onAddJob={() => setCurrentView('add_job')}
-          onSelectTrack={(id) => {
-            setSelectedTrackId(id);
-            setCurrentView('evidence_detail');
-          }}
-        />
-      )}
-
-      {currentView === 'add_job' && (
+  // Route resolver
+  const renderContent = () => {
+    if (currentPath === '/dev/components') {
+      return <DevComponentsShowcase />;
+    }
+    if (currentPath === '/add-job') {
+      return (
         <AddJobWizard
           onComplete={handleWizardComplete}
-          onCancel={() => setCurrentView('dashboard')}
+          onCancel={() => navigate('/')}
         />
-      )}
-
-      {currentView === 'evidence_detail' && activeTrack && (
+      );
+    }
+    if (currentPath === '/repositories') {
+      return (
+        <RepositoriesView
+          repoOwner={activeTrack?.repo?.owner}
+          repoName={activeTrack?.repo?.name}
+          branch={activeTrack?.branch}
+          lastSha={activeTrack?.last_seen_sha}
+          onRunAssessment={() => navigate(`/tracks/${activeTrack?.id}`)}
+        />
+      );
+    }
+    if (currentPath === '/activity') {
+      return <AgentActivityView />;
+    }
+    if (currentPath.includes('/changes') || currentPath.includes('/compare')) {
+      return (
+        <CompareView
+          onBack={() => navigate(`/tracks/${activeTrack?.id}`)}
+          onViewReport={() => navigate(`/tracks/${activeTrack?.id}`)}
+        />
+      );
+    }
+    if (currentPath.startsWith('/tracks/')) {
+      return (
         <ResultsView
           track={activeTrack}
-          onBackToDashboard={() => setCurrentView('dashboard')}
+          onBackToDashboard={() => navigate('/')}
         />
-      )}
+      );
+    }
+
+    // Default: Home / Dashboard (/)
+    return (
+      <Dashboard
+        opportunities={opportunities}
+        recentChanges={recentChanges}
+        nextActions={nextActions}
+        onAddJob={() => navigate('/add-job')}
+        onSelectTrack={(id) => {
+          setSelectedTrackId(id);
+          navigate(`/tracks/${id}`);
+        }}
+        onNavigateActivity={() => navigate('/activity')}
+      />
+    );
+  };
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        minHeight: '100vh',
+        backgroundColor: 'var(--bg, #050A1A)',
+        color: 'var(--text, #E8EEF9)',
+      }}
+    >
+      {/* Left Sidebar */}
+      <Sidebar
+        currentPath={currentPath}
+        onNavigate={navigate}
+        trackId={selectedTrackId}
+      />
+
+      {/* Main Column */}
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minWidth: 0,
+          overflowX: 'hidden',
+        }}
+      >
+        {/* Top Header Bar */}
+        <TopBar
+          watcherMode="webhook"
+          nextPollInSeconds={15}
+          llmMode="ai_on"
+          rateLimitRemaining={4982}
+          onNavigate={navigate}
+        />
+
+        {/* Viewport Content */}
+        <main style={{ flex: 1 }}>
+          {renderContent()}
+        </main>
+      </div>
     </div>
   );
 }
