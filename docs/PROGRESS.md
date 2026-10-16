@@ -41,10 +41,19 @@ This document tracks progress across all phases according to `docs/PLAN-5H.md` a
 - **Files Touched:** `frontend/src/types.ts`, `frontend/src/components/AddJobWizard.tsx`, `frontend/src/components/ClaimsMatrixView.tsx`, `frontend/src/App.tsx`
 - **Test Gate:** PASS (oxlint 0 errors 0 warnings, tsc -b clean, vite build successful)
 - **Libraries Looked Up:** None (React 19, TypeScript 5.8)
+- **Commit Hash:** `3465fb3`
+- **Open Issues:** None
+
+### Phase BE-2: Orchestrator, Watcher, Diff & Webhooks
+- **Status:** COMPLETED
+- **Files Touched:** `backend/app/agents/orchestrator.py`, `backend/app/agents/change_sentinel.py`, `backend/app/services/impact_map.py`, `backend/app/services/diff_builder.py`, `backend/app/routers/webhooks.py`, `backend/app/routers/tracks.py`, `backend/app/agents/repo_scout.py`, `backend/app/events.py`, `backend/tests/backend/test_be2.py`
+- **Test Gate:** PASS (91 tests passed across backend/tests, ruff check clean, ruff format clean, invariant scan clean)
+- **Libraries Looked Up:** hmac, hashlib, sse_starlette
 - **Commit Hash:** pending
 - **Open Issues:** None
 
 ---
+
 
 
 

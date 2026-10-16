@@ -212,3 +212,53 @@ async def get_track(id: str, db: Annotated[Session, Depends(get_db)]) -> Track:
         created_at=t.created_at.isoformat() if t.created_at else None,
         repo=repo_schema,
     )
+
+
+@router.post("/{id}/check-now")
+async def check_now(id: str, db: Annotated[Session, Depends(get_db)]) -> dict[str, str]:
+    """Manually trigger immediate commit check and reassessment for a track."""
+    t = db.query(TrackModel).filter(TrackModel.id == id).first()
+    if not t:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "TRACK_NOT_FOUND",
+                    "message": f"Track '{id}' not found",
+                    "retryable": False,
+                }
+            },
+        )  # type: ignore[return-value]
+
+    from backend.app.agents.orchestrator import orchestrator
+
+    repo = t.repo
+    scout = RepoScout()
+    try:
+        latest_sha = await scout.resolve_default_branch_sha(repo.owner, repo.name)
+    except Exception:
+        latest_sha = t.last_seen_sha or "HEAD"
+
+    if t.last_seen_sha and t.last_seen_sha != latest_sha:
+        # Reassess on new SHA
+        analysis = await orchestrator.run_reassessment(
+            track_id=t.id,
+            new_sha=latest_sha,
+            changed_files=[],
+            commit_message="Manual check-now trigger",
+            db=db,
+        )
+    else:
+        # Initial or up to date
+        analysis = await orchestrator.run_initial_assessment(
+            track_id=t.id,
+            sha=latest_sha,
+            db=db,
+        )
+
+    return {
+        "status": "checked",
+        "track_id": t.id,
+        "sha": latest_sha,
+        "analysis_id": analysis.id,
+    }

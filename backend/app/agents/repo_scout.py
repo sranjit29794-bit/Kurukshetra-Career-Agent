@@ -245,3 +245,6 @@ class RepoScout:
             "files_removed": removed,
             "files_modified": modified,
         }
+
+
+repo_scout = RepoScout()
