@@ -2,19 +2,35 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-
 from backend.app.db import get_db
-from backend.app.models import Analysis, Assessment as AssessmentModel, Evidence as EvidenceModel, FileCache, Job, Repo, Requirement, Track
+
+from backend.app.models import (
+    AgentEvent as AgentEventModel,
+    Analysis,
+    Assessment as AssessmentModel,
+    Evidence as EvidenceModel,
+    FileCache,
+    Job,
+    Repo,
+    Requirement,
+    Track,
+)
 from backend.app.schemas import (
+    AgentEvent,
+    AgentEventDetail,
     AnalysisDetail,
     AnalysisKind,
     AnalysisStatus,
     Assessment,
     AssessmentStatus,
     AssessmentStrength,
+    CoachingItem,
+    CoachingProof,
+    CoachingResponse,
     DiffChange,
     DiffItem,
     DiffResponse,
+    EventLevel,
     EvidenceItem,
     JobDraft,
     RepoConnectResult,
@@ -29,6 +45,7 @@ from backend.app.schemas import (
     WatcherMode,
     WebhookStatus,
 )
+from backend.app.events import event_bus
 from backend.app.github.client import GitHubClient
 from backend.app.detectors.runner import run_all_detectors
 from backend.app.verifier.skeptic import SkepticVerifier
@@ -191,24 +208,35 @@ async def get_track(track_id: int, db: Session = Depends(get_db)) -> TrackDetail
     )
 
 
-def _serialize_analysis(analysis: Analysis, assessments: List[AssessmentModel]) -> AnalysisDetail:
+def _serialize_analysis(
+    analysis: Analysis,
+    assessments: List[AssessmentModel],
+    repo_html_url: Optional[str] = None,
+) -> AnalysisDetail:
     assessment_schemas: List[Assessment] = []
+    clean_repo_url = repo_html_url.rstrip("/") if repo_html_url else None
     for a in assessments:
-        evidence_schemas = [
-            EvidenceItem(
-                id=e.id,
-                signal_id=e.signal_id,
-                detector=e.detector,
-                file_path=e.file_path,
-                line_start=e.line_start,
-                line_end=e.line_end,
-                snippet=e.snippet,
-                blob_sha=e.blob_sha,
-                strength=SignalStrength(e.strength),
-                counted=e.counted,
+        evidence_schemas = []
+        for e in a.evidence:
+            github_url = None
+            if clean_repo_url and analysis.commit_sha and e.file_path:
+                github_url = f"{clean_repo_url}/blob/{analysis.commit_sha}/{e.file_path}#L{e.line_start}-L{e.line_end}"
+
+            evidence_schemas.append(
+                EvidenceItem(
+                    id=e.id,
+                    signal_id=e.signal_id,
+                    detector=e.detector,
+                    file_path=e.file_path,
+                    line_start=e.line_start,
+                    line_end=e.line_end,
+                    snippet=e.snippet,
+                    blob_sha=e.blob_sha,
+                    strength=SignalStrength(e.strength),
+                    counted=e.counted,
+                    github_url=github_url,
+                )
             )
-            for e in a.evidence
-        ]
         assessment_schemas.append(
             Assessment(
                 id=a.id,
@@ -334,6 +362,17 @@ async def analyze_track(track_id: int, db: Session = Depends(get_db)) -> Analysi
                     continue
         db.commit()
 
+        db.add(
+            AgentEventModel(
+                track_id=track.id,
+                analysis_id=analysis.id,
+                agent="RepoScout",
+                level="info",
+                message=f"Tree inspected at {commit_sha[:8]}. Analyzed {len(files_map)} files (scope: {scope.analyzed} accepted, {scope.skipped} skipped).",
+                ts=datetime.utcnow(),
+            )
+        )
+
         # 3. Run deterministic detectors
         detected_signals = []
         for file_path, content in files_map.items():
@@ -344,6 +383,17 @@ async def analyze_track(track_id: int, db: Session = Depends(get_db)) -> Analysi
 
         # 4. Skeptic Verifier independent verification
         verified_evidence, dropped = SkepticVerifier.verify_all(detected_signals, files_map)
+
+        db.add(
+            AgentEventModel(
+                track_id=track.id,
+                analysis_id=analysis.id,
+                agent="SkepticVerifier",
+                level="info",
+                message=f"Verified {len(verified_evidence)} AST signals across codebase ({len(dropped)} unverified/mismatched dropped).",
+                ts=datetime.utcnow(),
+            )
+        )
 
         # 5. Map verified evidence to confirmed requirements
         req_drafts = [
@@ -396,13 +446,28 @@ async def analyze_track(track_id: int, db: Session = Depends(get_db)) -> Analysi
 
             persisted_assessments.append(asm)
 
+        dem_count = sum(1 for a in persisted_assessments if a.status == "DEMONSTRATED")
+        part_count = sum(1 for a in persisted_assessments if a.status == "PARTIAL")
+        gap_count = sum(1 for a in persisted_assessments if a.status == "NOT_DEMONSTRATED")
+        db.add(
+            AgentEventModel(
+                track_id=track.id,
+                analysis_id=analysis.id,
+                agent="EvidenceEngine",
+                level="success",
+                message=f"Deterministic evaluation complete for {len(persisted_assessments)} requirements: {dem_count} demonstrated, {part_count} partial, {gap_count} scope gaps.",
+                ts=datetime.utcnow(),
+            )
+        )
+
         analysis.status = "complete"
         analysis.scope = scope.model_dump()
         analysis.finished_at = datetime.utcnow()
         db.commit()
         db.refresh(analysis)
 
-        return _serialize_analysis(analysis, persisted_assessments)
+        repo_html_url = track.repo.html_url if track.repo else None
+        return _serialize_analysis(analysis, persisted_assessments, repo_html_url)
 
     except Exception as e:
         analysis.status = "failed"
@@ -432,17 +497,22 @@ async def get_track_history(track_id: int, db: Session = Depends(get_db)) -> Lis
         .all()
     )
 
+    repo_html_url = track.repo.html_url if track.repo else None
     results = []
     for a in analyses:
         assessments = db.query(AssessmentModel).filter_by(analysis_id=a.id).all()
-        results.append(_serialize_analysis(a, assessments))
+        results.append(_serialize_analysis(a, assessments, repo_html_url))
 
     return results
 
 
-@router.get("/{track_id}/diff", response_model=Optional[DiffResponse])
-async def get_track_diff(track_id: int, db: Session = Depends(get_db)) -> Optional[DiffResponse]:
-    """Computes before/after comparison between the latest two completed analyses."""
+@router.get("/{track_id}/analyses/{analysis_id}", response_model=AnalysisDetail)
+async def get_track_analysis(
+    track_id: int,
+    analysis_id: int,
+    db: Session = Depends(get_db),
+) -> AnalysisDetail:
+    """Retrieves a specific historical assessment analysis for a track."""
     track = db.query(Track).filter_by(id=track_id).first()
     if not track:
         raise HTTPException(
@@ -450,24 +520,62 @@ async def get_track_diff(track_id: int, db: Session = Depends(get_db)) -> Option
             detail={"error": {"code": "TRACK_NOT_FOUND", "message": f"Track #{track_id} not found.", "retryable": False}},
         )
 
-    analyses = (
-        db.query(Analysis)
-        .filter_by(track_id=track.id, status="complete")
-        .order_by(Analysis.started_at.desc())
-        .limit(2)
-        .all()
-    )
+    analysis = db.query(Analysis).filter_by(id=analysis_id, track_id=track.id).first()
+    if not analysis:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": {"code": "ANALYSIS_NOT_FOUND", "message": f"Analysis #{analysis_id} not found for track #{track_id}.", "retryable": False}},
+        )
 
-    if len(analyses) < 2:
-        return None
+    assessments = db.query(AssessmentModel).filter_by(analysis_id=analysis.id).all()
+    repo_html_url = track.repo.html_url if track.repo else None
+    return _serialize_analysis(analysis, assessments, repo_html_url)
 
-    latest, previous = analyses[0], analyses[1]
+
+@router.get("/{track_id}/diff", response_model=Optional[DiffResponse])
+async def get_track_diff(
+    track_id: int,
+    from_analysis_id: Optional[int] = None,
+    to_analysis_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+) -> Optional[DiffResponse]:
+    """Computes before/after comparison between two analyses (defaulting to latest two)."""
+    track = db.query(Track).filter_by(id=track_id).first()
+    if not track:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": {"code": "TRACK_NOT_FOUND", "message": f"Track #{track_id} not found.", "retryable": False}},
+        )
+
+    if from_analysis_id is not None and to_analysis_id is not None:
+        latest = db.query(Analysis).filter_by(id=to_analysis_id, track_id=track.id).first()
+        previous = db.query(Analysis).filter_by(id=from_analysis_id, track_id=track.id).first()
+        if not latest or not previous:
+            raise HTTPException(
+                status_code=404,
+                detail={"error": {"code": "ANALYSIS_NOT_FOUND", "message": "Specified analysis IDs not found for comparison.", "retryable": False}},
+            )
+    else:
+        analyses = (
+            db.query(Analysis)
+            .filter_by(track_id=track.id, status="complete")
+            .order_by(Analysis.started_at.desc())
+            .limit(2)
+            .all()
+        )
+
+        if len(analyses) < 2:
+            return None
+
+        latest, previous = analyses[0], analyses[1]
+
     latest_asms = db.query(AssessmentModel).filter_by(analysis_id=latest.id).all()
     prev_asms = {a.requirement_id: a for a in db.query(AssessmentModel).filter_by(analysis_id=previous.id).all()}
 
     items: List[DiffItem] = []
     reassessed_count = 0
     carried_count = 0
+    clean_repo_url = track.repo.html_url.rstrip("/") if track.repo and track.repo.html_url else None
 
     for curr in latest_asms:
         req_id = curr.requirement_id
@@ -503,6 +611,7 @@ async def get_track_diff(track_id: int, db: Session = Depends(get_db)) -> Option
                 blob_sha=e.blob_sha,
                 strength=SignalStrength(e.strength),
                 counted=e.counted,
+                github_url=f"{clean_repo_url}/blob/{latest.commit_sha}/{e.file_path}#L{e.line_start}-L{e.line_end}" if clean_repo_url and latest.commit_sha and e.file_path else None,
             )
             for e in curr.evidence
         ]
@@ -529,6 +638,8 @@ async def get_track_diff(track_id: int, db: Session = Depends(get_db)) -> Option
 
     return DiffResponse(
         analysis_id=latest.id,
+        from_analysis_id=previous.id,
+        to_analysis_id=latest.id,
         from_sha=previous.commit_sha,
         to_sha=latest.commit_sha,
         commit_message=latest.commit_message,
@@ -585,3 +696,214 @@ async def check_track_now(track_id: int, db: Session = Depends(get_db)) -> Dict[
                 }
             },
         )
+
+
+@router.get("/{track_id}/events", response_model=List[AgentEventDetail])
+def get_track_events(track_id: int, db: Session = Depends(get_db)) -> List[AgentEventDetail]:
+    """Retrieves chronological execution events for a specific track."""
+    track = db.query(Track).filter_by(id=track_id).first()
+    if not track:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": {"code": "TRACK_NOT_FOUND", "message": f"Track #{track_id} not found.", "retryable": False}},
+        )
+
+    db_events = (
+        db.query(AgentEventModel)
+        .filter_by(track_id=track_id)
+        .order_by(AgentEventModel.ts.desc())
+        .limit(100)
+        .all()
+    )
+
+    analysis_ids = {e.analysis_id for e in db_events if e.analysis_id}
+    analyses_map = {a.id: a for a in db.query(Analysis).filter(Analysis.id.in_(analysis_ids)).all()} if analysis_ids else {}
+
+    track_title = track.job.title if track.job else None
+    repo_name = f"{track.repo.owner}/{track.repo.name}" if track.repo else None
+
+    results: List[AgentEventDetail] = []
+    for ev in db_events:
+        commit_sha = None
+        if ev.analysis_id and ev.analysis_id in analyses_map:
+            commit_sha = analyses_map[ev.analysis_id].commit_sha
+        elif track.last_seen_sha:
+            commit_sha = track.last_seen_sha
+
+        try:
+            level_enum = EventLevel(ev.level)
+        except Exception:
+            level_enum = EventLevel.INFO
+
+        results.append(
+            AgentEventDetail(
+                id=ev.id,
+                track_id=ev.track_id,
+                analysis_id=ev.analysis_id,
+                agent=ev.agent,
+                level=level_enum,
+                message=ev.message,
+                timestamp=ev.ts,
+                commit_sha=commit_sha,
+                track_title=track_title,
+                repo_name=repo_name,
+            )
+        )
+    return results
+
+
+@router.get("/{track_id}/coaching", response_model=CoachingResponse)
+@router.get("/{track_id}/plan", response_model=CoachingResponse)
+def get_track_coaching(track_id: int, db: Session = Depends(get_db)) -> CoachingResponse:
+    """Returns grounded, evidence-backed career coaching recommendations.
+
+    Every recommendation is derived strictly from confirmed job requirements and
+    the latest complete assessment. Strengths cite verified code lines; gaps provide
+    concrete implementation steps and explain that missing repo evidence is never
+    proof of missing student capability.
+    """
+    track = db.query(Track).filter_by(id=track_id).first()
+    if not track:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": {"code": "TRACK_NOT_FOUND", "message": f"Track #{track_id} not found.", "retryable": False}},
+        )
+
+    analysis = (
+        db.query(Analysis)
+        .filter_by(track_id=track.id, status="complete")
+        .order_by(Analysis.started_at.desc())
+        .first()
+    )
+    if not analysis:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": {"code": "NO_ANALYSIS_FOUND", "message": "No completed analysis found for this track. Run an assessment first.", "retryable": False}},
+        )
+
+    assessments = db.query(AssessmentModel).filter_by(analysis_id=analysis.id).all()
+    clean_repo_url = track.repo.html_url.rstrip("/") if track.repo and track.repo.html_url else None
+    repo_full_name = f"{track.repo.owner}/{track.repo.name}" if track.repo else "repository"
+    track_title = track.job.title if track.job else f"Track #{track.id}"
+
+    coaching_items: List[CoachingItem] = []
+    strengths_count = 0
+    gaps_count = 0
+
+    for asm in assessments:
+        req = asm.requirement
+        req_name = req.name if req else f"Requirement #{asm.requirement_id}"
+        req_category = req.category if req else "technical"
+        req_priority = req.priority if req else "must"
+        status_enum = AssessmentStatus(asm.status)
+
+        # Extract verified proof citations
+        proof_list: List[CoachingProof] = []
+        for e in asm.evidence:
+            github_url = (
+                f"{clean_repo_url}/blob/{analysis.commit_sha}/{e.file_path}#L{e.line_start}-L{e.line_end}"
+                if clean_repo_url and analysis.commit_sha and e.file_path
+                else None
+            )
+            proof_list.append(
+                CoachingProof(
+                    file_path=e.file_path,
+                    line_start=e.line_start,
+                    line_end=e.line_end,
+                    detector=e.detector,
+                    snippet=e.snippet,
+                    github_url=github_url,
+                )
+            )
+
+        if status_enum == AssessmentStatus.DEMONSTRATED:
+            strengths_count += 1
+            action_title = f"Maintain and Harden Verified {req_name}"
+            why = f"Your repository already demonstrates verified proof of {req_name} with {len(proof_list)} verified citation(s). Code matches AST structural criteria."
+            first_path = proof_list[0].file_path if proof_list else "your codebase"
+            implementation_guide = f"Add automated regression test coverage for existing handlers in {first_path} and document architectural contracts."
+            estimated_effort = "30 mins"
+            scope_caveat = None
+            is_actionable = False
+            status_claim = "verified_strength"
+
+        elif status_enum == AssessmentStatus.PARTIAL:
+            gaps_count += 1
+            action_title = f"Elevate {req_name} from Partial Signals to Full Verification"
+            why = asm.limitation or f"Partial code patterns for {req_name} were observed, but additional structural coverage or explicit parameter bindings are required."
+            first_path = proof_list[0].file_path if proof_list else "your codebase"
+            implementation_guide = asm.next_step or f"Expand implementation in {first_path} to provide complete parameter bindings or comprehensive assertions."
+            estimated_effort = "45-60 mins"
+            scope_caveat = "Partial signal verified; additional scope needed for full demonstration."
+            is_actionable = True
+            status_claim = "recommendation"
+
+        else:  # NOT_DEMONSTRATED or UNABLE_TO_ASSESS
+            gaps_count += 1
+            action_title = f"Implement Concrete Code Artifacts for {req_name}"
+            why = f"No verified code evidence was detected within the analyzed repository scope at commit {analysis.commit_sha[:8]}."
+
+            tax = (req.taxonomy_key or req_category or "").lower()
+            if "sql" in tax or "database" in tax:
+                implementation_guide = "Add a database module using SQLite or SQLAlchemy with parameterized queries (e.g. `cursor.execute('SELECT * FROM items WHERE id = ?', (item_id,))`). Include a schema definition or migration file."
+            elif "test" in tax:
+                implementation_guide = "Create a `tests/` directory with `test_*.py` files. Add pytest test functions with meaningful assertions (e.g. testing status codes, JSON payload responses, or edge cases). Avoid trivial `assert True`."
+            elif "api" in tax or "rest" in tax:
+                implementation_guide = "Define FastAPI or Flask route handlers (e.g. `@app.get('/items')`, `@app.post('/items')`) with request validation schemas and structured JSON return types."
+            elif "deploy" in tax:
+                implementation_guide = "Add a multi-stage `Dockerfile` specifying a base image (`python:3.11-slim`), dependencies installation, and `CMD` entrypoint for your application."
+            elif "ci" in tax:
+                implementation_guide = "Add a `.github/workflows/ci.yml` file running pytest and linting on push or pull requests."
+            else:
+                implementation_guide = f"Implement a dedicated module demonstrating practical usage of {req_name} in your project codebase."
+
+            scope_caveat = f"Scope caveat: evidence was not detected in inspected files for commit {analysis.commit_sha[:8]}. This does not indicate a lack of candidate skill or qualification."
+            estimated_effort = "1-2 hours"
+            is_actionable = True
+            status_claim = "recommendation"
+
+        coaching_items.append(
+            CoachingItem(
+                requirement_id=asm.requirement_id,
+                requirement_name=req_name,
+                category=req_category,
+                priority=req_priority,
+                status=status_enum,
+                status_label=status_enum.value,
+                action_title=action_title,
+                why=why,
+                implementation_guide=implementation_guide,
+                estimated_effort=estimated_effort,
+                verified_proof=proof_list,
+                scope_caveat=scope_caveat,
+                is_actionable=is_actionable,
+                status_claim=status_claim,
+            )
+        )
+
+    # Sort items: actionable must-have gaps first, then nice-to-have gaps, then verified strengths
+    coaching_items.sort(
+        key=lambda it: (
+            0 if it.is_actionable and it.priority == "must" else
+            1 if it.is_actionable else
+            2
+        )
+    )
+
+    summary = (
+        f"Portfolio demonstrates {strengths_count} requirement(s) verified by Skeptic AST checks. "
+        f"Identified {gaps_count} actionable improvement opportunity(ies) grounded in repository analysis at commit {analysis.commit_sha[:8]}."
+    )
+
+    return CoachingResponse(
+        track_id=track.id,
+        track_title=track_title,
+        repo_full_name=repo_full_name,
+        commit_sha=analysis.commit_sha,
+        generated_at=datetime.utcnow(),
+        ai_used=analysis.ai_used,
+        summary=summary,
+        strengths_count=strengths_count,
+        gaps_count=gaps_count,
+        items=coaching_items,
+    )

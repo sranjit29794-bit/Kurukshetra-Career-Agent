@@ -66,3 +66,33 @@ Google Fonts import:
 - All entered form state (job description text, extracted requirements, repo URL) is retained across failures.
 - Server-side GitHub token configuration is clearly explained; users are never asked to enter raw tokens in frontend forms.
 - Stale fixture data is never displayed as live when a request fails.
+
+---
+
+## 6. Phase 7 Evidence Inspector, Diff & Timeline Architecture
+
+- **Immutable Commit-Pinned GitHub Source Anchors:** Citations format `https://github.com/{owner}/{repo}/blob/{commit_sha}/{path}#L{start}-L{end}` ensuring permanent historical proof that never drifts when branches advance.
+- **Honest Absence Communication:** Clearly display that `NOT_DEMONSTRATED` signifies absence of verifiable code in analyzed files, not student deficiency.
+- **Audit Timeline & Historical Snapshot Inspection:** Each historical run displays trigger source (`Webhook`, `Polling`, `Manual`), commit SHA, timestamp, and provides an instant snapshot viewer with clear banner indicator.
+- **Granular Diff Engine:** Shows files changed, previous vs current status with semantic badge pills (`[IMPROVED]`, `[UNCHANGED]`, `[REGRESSED]`), and reasons for each delta.
+- **Mobile Responsive Integrity:** Code snippets and audit tables use `overflow-x: auto` wrappers with strict `max-width: 100%`, preserving 390px mobile viewport integrity with zero horizontal scroll on outer body.
+
+---
+
+## 7. Phase 8 Transparent Activity Feed & Grounded Coaching System
+
+### Multi-Agent Event Feed Design Tokens
+- **RepoScout (`🧭` Blue):** `bg: rgba(59, 130, 246, 0.1)`, `color: #3b82f6`, `border: rgba(59, 130, 246, 0.3)`.
+- **SkepticVerifier (`🛡️` Purple):** `bg: rgba(168, 85, 247, 0.1)`, `color: #a855f7`, `border: rgba(168, 85, 247, 0.3)`.
+- **EvidenceEngine (`🔬` Emerald):** `bg: rgba(16, 185, 129, 0.1)`, `color: #10b981`, `border: rgba(16, 185, 129, 0.3)`.
+- **ChangeSentinel (`⚡` Amber):** `bg: rgba(245, 158, 11, 0.1)`, `color: #f59e0b`, `border: rgba(245, 158, 11, 0.3)`.
+
+### Grounded Coaching Architecture
+- **Status Claims Separation:**
+  - `verified_strength`: Supported by immutable AST proof citations (`file_path`, `line_start`, `line_end`, `detector`, `github_url`). Non-actionable.
+  - `recommendation`: Actionable gaps with estimated effort and step-by-step taxonomy implementation instructions.
+- **Evidence-Integrity Guarantee Banner:** Prominently featured callout explaining that missing code evidence reflects repo scope constraints and never implies student inability.
+- **Unverified Status Invariant:** Clear disclaimer stating that recommendations only convert to verified proof once real code is committed, pushed, and reassessed by the verification pipeline.
+- **Live SSE Streaming & Audit Log:** Real-time event propagation with fallback to periodic polling, showing persistent database records (`AgentEventModel`), never mock/seeded fabrications.
+
+

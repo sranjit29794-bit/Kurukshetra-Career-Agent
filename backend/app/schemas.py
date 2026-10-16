@@ -129,6 +129,7 @@ class EvidenceItem(BaseModel):
     blob_sha: str
     strength: SignalStrength
     counted: bool = Field(..., description="True if evidence counts towards score; False if ignored weak signal")
+    github_url: Optional[str] = Field(None, description="Direct immutable GitHub source anchor blob URL at evaluated commit SHA")
 
 
 # ==============================================================================
@@ -265,6 +266,8 @@ class DiffItem(BaseModel):
 
 class DiffResponse(BaseModel):
     analysis_id: int
+    from_analysis_id: Optional[int] = None
+    to_analysis_id: Optional[int] = None
     from_sha: str
     to_sha: str
     commit_message: Optional[str] = None
@@ -307,6 +310,62 @@ class AgentEvent(BaseModel):
     level: EventLevel
     message: str
     timestamp: datetime
+
+
+class AgentEventDetail(BaseModel):
+    id: int
+    track_id: Optional[int] = None
+    analysis_id: Optional[int] = None
+    agent: str
+    level: EventLevel
+    message: str
+    timestamp: datetime
+    commit_sha: Optional[str] = None
+    track_title: Optional[str] = None
+    repo_name: Optional[str] = None
+
+
+# ==============================================================================
+# Grounded Coaching Models (docs/BRAIN.md §12, §13; PHASE_PLAN_V2 Phase 8)
+# ==============================================================================
+
+class CoachingProof(BaseModel):
+    file_path: str
+    line_start: int
+    line_end: int
+    detector: str
+    snippet: str
+    github_url: Optional[str] = None
+
+
+class CoachingItem(BaseModel):
+    requirement_id: int
+    requirement_name: str
+    category: str
+    priority: str
+    status: AssessmentStatus
+    status_label: str
+    action_title: str
+    why: str
+    implementation_guide: str
+    estimated_effort: str
+    verified_proof: List[CoachingProof] = Field(default_factory=list)
+    scope_caveat: Optional[str] = None
+    is_actionable: bool
+    status_claim: str = "recommendation"
+
+
+class CoachingResponse(BaseModel):
+    track_id: int
+    track_title: str
+    repo_full_name: str
+    commit_sha: str
+    generated_at: datetime
+    ai_used: bool
+    summary: str
+    strengths_count: int
+    gaps_count: int
+    items: List[CoachingItem]
 
 
 # ==============================================================================

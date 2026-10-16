@@ -71,6 +71,7 @@ export interface EvidenceItem {
   blob_sha: string;
   strength: SignalStrength;
   counted: boolean;
+  github_url?: string;
 }
 
 // ==============================================================================
@@ -207,6 +208,8 @@ export interface DiffItem {
 
 export interface DiffResponse {
   analysis_id: number;
+  from_analysis_id?: number;
+  to_analysis_id?: number;
   from_sha: string;
   to_sha: string;
   commit_message?: string | null;
@@ -249,6 +252,62 @@ export interface AgentEvent {
   level: EventLevel;
   message: string;
   timestamp: string;
+}
+
+export interface AgentEventDetail {
+  id: number;
+  track_id?: number | null;
+  analysis_id?: number | null;
+  agent: string;
+  level: EventLevel;
+  message: string;
+  timestamp: string;
+  commit_sha?: string | null;
+  track_title?: string | null;
+  repo_name?: string | null;
+}
+
+// ==============================================================================
+// Grounded Coaching Models (docs/BRAIN.md §12, §13; PHASE_PLAN_V2 Phase 8)
+// ==============================================================================
+
+export interface CoachingProof {
+  file_path: string;
+  line_start: number;
+  line_end: number;
+  detector: string;
+  snippet: string;
+  github_url?: string | null;
+}
+
+export interface CoachingItem {
+  requirement_id: number;
+  requirement_name: string;
+  category: string;
+  priority: string;
+  status: AssessmentStatus;
+  status_label: string;
+  action_title: string;
+  why: string;
+  implementation_guide: string;
+  estimated_effort: string;
+  verified_proof: CoachingProof[];
+  scope_caveat?: string | null;
+  is_actionable: boolean;
+  status_claim: string;
+}
+
+export interface CoachingResponse {
+  track_id: number;
+  track_title: string;
+  repo_full_name: string;
+  commit_sha: string;
+  generated_at: string;
+  ai_used: boolean;
+  summary: string;
+  strengths_count: number;
+  gaps_count: number;
+  items: CoachingItem[];
 }
 
 // ==============================================================================

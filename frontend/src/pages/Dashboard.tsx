@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import type { TrackSummary, HealthResponse } from '../types/contract';
+import type { TrackSummary, HealthResponse, AgentEventDetail } from '../types/contract';
 import { API_BASE } from '../api/config';
 
 interface DashboardProps {
@@ -9,6 +9,7 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [tracks, setTracks] = useState<TrackSummary[]>([]);
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [recentEvents, setRecentEvents] = useState<AgentEventDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [activePipelineStep, setActivePipelineStep] = useState<number>(1);
 
@@ -16,10 +17,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     Promise.all([
       fetch(`${API_BASE}/api/tracks`).then((r) => (r.ok ? r.json() : [])),
       fetch(`${API_BASE}/api/health`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`${API_BASE}/api/events?limit=5`).then((r) => (r.ok ? r.json() : [])),
     ])
-      .then(([tracksData, healthData]) => {
+      .then(([tracksData, healthData, eventsData]) => {
         setTracks(tracksData || []);
         setHealth(healthData);
+        setRecentEvents(eventsData || []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -459,6 +462,122 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   >
                     Diff History
                   </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Live Agent Activity & Audit Feed Section */}
+      <div
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          border: '1px solid var(--border-card)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '28px',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span className="live-pulse" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--accent-verified)', display: 'inline-block' }} />
+              <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                TRANSPARENT MULTI-AGENT LOG
+              </span>
+            </div>
+            <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
+              Recent Agent Activity Stream
+            </h3>
+          </div>
+
+          <button
+            onClick={() => onNavigate('/activity')}
+            style={{
+              backgroundColor: 'var(--bg-surface-elevated)',
+              border: '1px solid var(--border-subtle)',
+              color: 'var(--accent-primary)',
+              padding: '8px 16px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '13px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <span>⚡ Open Full Activity Feed</span>
+            <span>→</span>
+          </button>
+        </div>
+
+        {recentEvents.length === 0 ? (
+          <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-dim)', fontSize: '13px' }}>
+            No agent activity recorded yet. Run an assessment on any career track to generate audit events.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {recentEvents.map((evt) => (
+              <div
+                key={evt.id}
+                style={{
+                  backgroundColor: 'var(--bg-surface-elevated)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '12px 16px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      backgroundColor: 'var(--bg-surface)',
+                      color: 'var(--accent-primary)',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      border: '1px solid var(--border-subtle)',
+                    }}
+                  >
+                    {evt.agent}
+                  </span>
+                  <span style={{ fontSize: '13px', color: 'var(--text-main)', fontWeight: 500 }}>
+                    {evt.message}
+                  </span>
+                  {evt.commit_sha && (
+                    <code style={{ fontSize: '11px', color: 'var(--accent-verified)', backgroundColor: 'var(--bg-surface)', padding: '2px 6px', borderRadius: '4px' }}>
+                      {evt.commit_sha.slice(0, 7)}
+                    </code>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                    {new Date(evt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  {evt.track_id && (
+                    <button
+                      onClick={() => onNavigate(`/tracks/${evt.track_id}`)}
+                      style={{
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        color: 'var(--accent-primary)',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        padding: '2px 4px',
+                      }}
+                    >
+                      Track #{evt.track_id} →
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

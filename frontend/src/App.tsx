@@ -6,6 +6,7 @@ import { DiffView } from './pages/DiffView';
 import { RepoMonitor } from './pages/RepoMonitor';
 import { Settings } from './pages/Settings';
 import { DevTools } from './pages/DevTools';
+import { ActivityFeedView } from './pages/ActivityFeedView';
 
 export function App() {
   const [currentPath, setCurrentPath] = useState<string>(window.location.pathname);
@@ -37,12 +38,13 @@ export function App() {
   };
 
   // Determine active view mode
-  const getActiveMode = (): 'dashboard' | 'track' | 'track_detail' | 'diff' | 'repomonitor' | 'settings' | 'devtools' => {
+  const getActiveMode = (): 'dashboard' | 'track' | 'track_detail' | 'diff' | 'repomonitor' | 'settings' | 'devtools' | 'activity' => {
     if (currentPath === '/' || currentPath === '/dashboard') return 'dashboard';
     if (currentPath.startsWith('/tracks/')) return 'track_detail';
     if (currentPath.startsWith('/diff/')) return 'diff';
     if (currentPath === '/track' || currentPath.startsWith('/track')) return 'track';
     if (currentPath.startsWith('/repo-monitor')) return 'repomonitor';
+    if (currentPath.startsWith('/activity')) return 'activity';
     if (currentPath.startsWith('/settings')) return 'settings';
     if (currentPath.startsWith('/devtools')) return 'devtools';
     return 'dashboard';
@@ -165,6 +167,7 @@ export function App() {
           {[
             { mode: 'dashboard', path: '/', label: 'Overview', icon: '🎓' },
             { mode: 'track', path: '/track', label: 'Create Track', icon: '🎯' },
+            { mode: 'activity', path: '/activity', label: 'Activity Feed', icon: '⚡' },
             { mode: 'repomonitor', path: '/repo-monitor', label: 'Repo Sentinel', icon: '🔍' },
             { mode: 'settings', path: '/settings', label: 'Integrations', icon: '⚙️' },
             { mode: 'devtools', path: '/devtools', label: 'DevTools', icon: '🛠️' },
@@ -277,6 +280,10 @@ export function App() {
 
     if (activeMode === 'repomonitor') {
       return <RepoMonitor onNavigate={navigate} />;
+    }
+
+    if (activeMode === 'activity') {
+      return <ActivityFeedView onNavigate={navigate} />;
     }
 
     if (activeMode === 'settings') {

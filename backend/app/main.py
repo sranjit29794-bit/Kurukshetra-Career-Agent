@@ -11,7 +11,7 @@ from backend.app.routers.health import router as health_router
 from backend.app.routers.jobs import router as jobs_router
 from backend.app.routers.repos import router as repos_router
 from backend.app.routers.tracks import router as tracks_router
-
+from backend.app.routers.events import router as events_router
 from backend.app.routers.webhooks import router as webhooks_router
 from backend.app.watcher.poller import polling_watcher
 
@@ -103,6 +103,7 @@ app.include_router(dev_router)
 app.include_router(repos_router)
 app.include_router(jobs_router)
 app.include_router(tracks_router)
+app.include_router(events_router)
 app.include_router(webhooks_router)
 
 
