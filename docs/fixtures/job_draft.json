@@ -1,0 +1,62 @@
+{
+  "id": 1,
+  "title": "Backend Engineering Intern",
+  "company": "NovaPay Financial",
+  "source_url": "https://careers.novapay.io/jobs/backend-intern-2026",
+  "source_type": "fetched",
+  "raw_text": "NovaPay is seeking a Backend Engineering Intern. Responsibilities: Design and implement high-performance RESTful APIs using Python frameworks. Proficiency in SQL query optimization and relational schema design. Write automated unit and integration tests with pytest. Experience deploying applications with Docker and container workflows.",
+  "confirmed": true,
+  "requirements": [
+    {
+      "id": 101,
+      "name": "REST API Development",
+      "category": "Backend Engineering",
+      "priority": "must",
+      "source_sentence": "Design and implement high-performance RESTful APIs using Python frameworks.",
+      "taxonomy_key": "rest_api",
+      "search_terms": ["fastapi", "router", "endpoint", "get", "post"],
+      "position": 1
+    },
+    {
+      "id": 102,
+      "name": "SQL & Relational Databases",
+      "category": "Data & Storage",
+      "priority": "must",
+      "source_sentence": "Proficiency in SQL query optimization and relational schema design.",
+      "taxonomy_key": "sql_database",
+      "search_terms": ["sql", "select", "insert", "execute", "sqlite", "parameterized"],
+      "position": 2
+    },
+    {
+      "id": 103,
+      "name": "Automated Testing",
+      "category": "Quality Assurance",
+      "priority": "must",
+      "source_sentence": "Write automated unit and integration tests with pytest to maintain high coverage.",
+      "taxonomy_key": "testing",
+      "search_terms": ["pytest", "test_", "assert", "fixture"],
+      "position": 3
+    },
+    {
+      "id": 104,
+      "name": "Docker & Deployment",
+      "category": "DevOps & Cloud",
+      "priority": "nice",
+      "source_sentence": "Experience deploying applications with Docker and container workflows.",
+      "taxonomy_key": "deployment",
+      "search_terms": ["dockerfile", "docker-compose", "container", "cmd"],
+      "position": 4
+    },
+    {
+      "id": 105,
+      "name": "Python Language Foundations",
+      "category": "Core Programming",
+      "priority": "must",
+      "source_sentence": "Strong knowledge of Python 3, object-oriented principles, and clean modular code.",
+      "taxonomy_key": "python",
+      "search_terms": ["class", "def", "pydantic", "typing"],
+      "position": 5
+    }
+  ],
+  "ambiguities": []
+}

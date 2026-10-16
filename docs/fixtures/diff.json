@@ -1,0 +1,99 @@
+{
+  "analysis_id": 2,
+  "from_sha": "a1b2c3d4e5f67890123456789abcdef012345678",
+  "to_sha": "c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1",
+  "commit_message": "feat(db): add sqlite parameterized queries and test coverage",
+  "files_changed": [
+    "app/db.py",
+    "app/routers/items.py",
+    "tests/test_db.py"
+  ],
+  "items": [
+    {
+      "requirement_id": 101,
+      "name": "REST API Development",
+      "before_status": "DEMONSTRATED",
+      "after_status": "DEMONSTRATED",
+      "change": "unchanged",
+      "evidence_added": [],
+      "evidence_removed": [],
+      "reassessed": true,
+      "why": "Endpoints updated to consume database layer; API contracts and models remain verified.",
+      "remaining_limitation": null
+    },
+    {
+      "requirement_id": 102,
+      "name": "SQL & Relational Databases",
+      "before_status": "NOT_DEMONSTRATED",
+      "after_status": "DEMONSTRATED",
+      "change": "improved",
+      "evidence_added": [
+        {
+          "signal_id": "sig_sql_01_c2d3e4f",
+          "detector": "sql_database",
+          "file_path": "app/db.py",
+          "line_start": 18,
+          "line_end": 35,
+          "snippet": "def get_item_by_id(db: Connection, item_id: int) -> Optional[dict]:\n    cursor = db.cursor()\n    cursor.execute(\"SELECT id, title, price FROM items WHERE id = ?\", (item_id,))\n    row = cursor.fetchone()\n    return dict(row) if row else None",
+          "blob_sha": "c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2",
+          "strength": "strong",
+          "counted": true
+        }
+      ],
+      "evidence_removed": [],
+      "reassessed": true,
+      "why": "Added parameterized SQLite SELECT query with positional parameter binding in app/db.py:18-35.",
+      "remaining_limitation": "Queries are verified statically with parameterized bindings; transactions and connection pooling not yet configured."
+    },
+    {
+      "requirement_id": 103,
+      "name": "Automated Testing",
+      "before_status": "NOT_DEMONSTRATED",
+      "after_status": "PARTIAL",
+      "change": "improved",
+      "evidence_added": [
+        {
+          "signal_id": "sig_test_01_c2d3e4f",
+          "detector": "testing",
+          "file_path": "tests/test_db.py",
+          "line_start": 10,
+          "line_end": 28,
+          "snippet": "def test_get_item_by_id(test_db):\n    res = get_item_by_id(test_db, 1)\n    assert res is not None\n    assert res[\"title\"] == \"Test Widget\"\n    assert res[\"price\"] == 19.99",
+          "blob_sha": "d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3",
+          "strength": "strong",
+          "counted": true
+        }
+      ],
+      "evidence_removed": [],
+      "reassessed": true,
+      "why": "tests/test_db.py introduces automated test suite with meaningful assertions against temporary database fixtures.",
+      "remaining_limitation": "Testing status is capped at PARTIAL in MVP under Invariant #6: tests existing does not prove tests passing in CI."
+    },
+    {
+      "requirement_id": 104,
+      "name": "Docker & Deployment",
+      "before_status": "NOT_DEMONSTRATED",
+      "after_status": "NOT_DEMONSTRATED",
+      "change": "unchanged",
+      "evidence_added": [],
+      "evidence_removed": [],
+      "reassessed": false,
+      "why": "Unchanged — not reassessed. No deployment or Dockerfiles modified in this commit.",
+      "remaining_limitation": "No deployment descriptors found in repository."
+    },
+    {
+      "requirement_id": 105,
+      "name": "Python Language Foundations",
+      "before_status": "DEMONSTRATED",
+      "after_status": "DEMONSTRATED",
+      "change": "unchanged",
+      "evidence_added": [],
+      "evidence_removed": [],
+      "reassessed": true,
+      "why": "Core Python structure remains demonstrated across modified modules.",
+      "remaining_limitation": null
+    }
+  ],
+  "reassessed_count": 4,
+  "carried_forward_count": 1
+}

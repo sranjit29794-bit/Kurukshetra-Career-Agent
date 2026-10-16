@@ -1,0 +1,154 @@
+{
+  "id": 1,
+  "track_id": 1,
+  "commit_sha": "a1b2c3d4e5f67890123456789abcdef012345678",
+  "commit_message": "feat: initial fastAPI endpoints with in-memory store",
+  "trigger": "manual",
+  "kind": "initial",
+  "status": "complete",
+  "prev_analysis_id": null,
+  "scope": {
+    "analyzed": 42,
+    "skipped": 118,
+    "skipped_reasons": {
+      "excluded_dir": 95,
+      "binary": 8,
+      "size_exceeded": 2,
+      "unsupported_ext": 13
+    },
+    "truncated": false
+  },
+  "ai_used": true,
+  "error": null,
+  "started_at": "2026-10-16T10:00:00Z",
+  "finished_at": "2026-10-16T10:00:15Z",
+  "assessments": [
+    {
+      "id": 201,
+      "analysis_id": 1,
+      "requirement_id": 101,
+      "requirement_name": "REST API Development",
+      "status": "DEMONSTRATED",
+      "strength": "strong",
+      "summary": "FastAPI router mounted with GET and POST endpoints using Pydantic request and response models.",
+      "limitation": null,
+      "next_step": "Add query parameter filtering and pagination headers to list endpoints.",
+      "carried_forward": false,
+      "reassessed": true,
+      "ignored_signals": [],
+      "ai_used": true,
+      "evidence": [
+        {
+          "signal_id": "sig_rest_01_a1b2c3d",
+          "detector": "rest_api",
+          "file_path": "app/routers/items.py",
+          "line_start": 14,
+          "line_end": 32,
+          "snippet": "@router.post(\"/items\", response_model=ItemResponse, status_code=201)\ndef create_item(payload: ItemCreate) -> ItemResponse:\n    item = {\"id\": len(items) + 1, **payload.model_dump()}\n    items.append(item)\n    return ItemResponse(**item)",
+          "blob_sha": "f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0",
+          "strength": "strong",
+          "counted": true
+        }
+      ]
+    },
+    {
+      "id": 202,
+      "analysis_id": 1,
+      "requirement_id": 102,
+      "requirement_name": "SQL & Relational Databases",
+      "status": "NOT_DEMONSTRATED",
+      "strength": "none",
+      "summary": "No database query execution or ORM usage discovered in the analyzed Python codebase.",
+      "limitation": "Mentions of 'PostgreSQL' in README.md and TODO comments were detected and rejected as weak signals.",
+      "next_step": "Implement a SQLite/PostgreSQL connection using parameterized queries or SQLAlchemy in app/db.py.",
+      "carried_forward": false,
+      "reassessed": true,
+      "ignored_signals": [
+        {
+          "detector": "weak_signals",
+          "reason": "README claim without supporting code",
+          "file_path": "README.md",
+          "line": 12,
+          "snippet": "Built with FastAPI and PostgreSQL database."
+        },
+        {
+          "detector": "weak_signals",
+          "reason": "Unimplemented TODO comment",
+          "file_path": "app/main.py",
+          "line": 24,
+          "snippet": "# TODO: add SQL database integration"
+        }
+      ],
+      "ai_used": true,
+      "evidence": []
+    },
+    {
+      "id": 203,
+      "analysis_id": 1,
+      "requirement_id": 103,
+      "requirement_name": "Automated Testing",
+      "status": "NOT_DEMONSTRATED",
+      "strength": "none",
+      "summary": "Test file exists, but lacks verifiable assertions against application functionality.",
+      "limitation": "tests/test_smoke.py contains only 'assert True', which is flagged as a trivial assertion and denied credit under invariant #1.",
+      "next_step": "Import TestClient from fastapi.testclient and assert HTTP status codes and JSON response bodies.",
+      "carried_forward": false,
+      "reassessed": true,
+      "ignored_signals": [
+        {
+          "detector": "weak_signals",
+          "reason": "Trivial assertion (assert True)",
+          "file_path": "tests/test_smoke.py",
+          "line": 5,
+          "snippet": "def test_smoke():\n    assert True"
+        }
+      ],
+      "ai_used": true,
+      "evidence": []
+    },
+    {
+      "id": 204,
+      "analysis_id": 1,
+      "requirement_id": 104,
+      "requirement_name": "Docker & Deployment",
+      "status": "NOT_DEMONSTRATED",
+      "strength": "none",
+      "summary": "No Dockerfile, compose file, or cloud deployment specification found in analyzed scope.",
+      "limitation": "Absence in analyzed repository files; deployment capped at PARTIAL in MVP even with config present.",
+      "next_step": "Create a multi-stage Dockerfile running uvicorn on port 8000.",
+      "carried_forward": false,
+      "reassessed": true,
+      "ignored_signals": [],
+      "ai_used": true,
+      "evidence": []
+    },
+    {
+      "id": 205,
+      "analysis_id": 1,
+      "requirement_id": 105,
+      "requirement_name": "Python Language Foundations",
+      "status": "DEMONSTRATED",
+      "strength": "strong",
+      "summary": "Multiple Python modules utilizing modern type annotations, Pydantic schemas, and modular architecture.",
+      "limitation": null,
+      "next_step": "Add custom exception handlers and context managers.",
+      "carried_forward": false,
+      "reassessed": true,
+      "ignored_signals": [],
+      "ai_used": true,
+      "evidence": [
+        {
+          "signal_id": "sig_py_01_a1b2c3d",
+          "detector": "python",
+          "file_path": "app/schemas.py",
+          "line_start": 8,
+          "line_end": 20,
+          "snippet": "class ItemBase(BaseModel):\n    title: str\n    description: Optional[str] = None\n    price: float",
+          "blob_sha": "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1",
+          "strength": "strong",
+          "counted": true
+        }
+      ]
+    }
+  ]
+}
