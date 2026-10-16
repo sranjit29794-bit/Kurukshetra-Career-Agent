@@ -90,6 +90,7 @@ class ErrorDetail(BaseModel):
     code: str
     message: str
     retryable: bool = False
+    reset_epoch: Optional[int] = None
 
 
 class ErrorResponse(BaseModel):

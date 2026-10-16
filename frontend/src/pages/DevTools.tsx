@@ -19,8 +19,15 @@ const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 export const DevTools: React.FC = () => {
   const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [healthLoading, setHealthLoading] = useState<boolean>(false);
+  const [healthLoading, setHealthLoading] = useState<boolean>(true);
   const [healthError, setHealthError] = useState<string | null>(null);
+
+  const [contractsCheck, setContractsCheck] = useState<{
+    valid: boolean;
+    data?: any;
+    error?: string;
+  } | null>(null);
+  const [contractsLoading, setContractsLoading] = useState<boolean>(true);
 
   const [activeTab, setActiveTab] = useState<'assessment' | 'diff' | 'job' | 'repo' | 'events' | 'raw'>(
     'assessment'
@@ -51,8 +58,73 @@ export const DevTools: React.FC = () => {
     }
   };
 
-  useEffect(() => {
+  const fetchContracts = async () => {
+    setContractsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/dev/contracts`);
+      if (!res.ok) {
+        throw new Error(`HTTP error ${res.status}: ${res.statusText}`);
+      }
+      const data = await res.json();
+      setContractsCheck({ valid: data.contracts_valid === true, data });
+    } catch (err: any) {
+      setContractsCheck({
+        valid: false,
+        error: err.message || 'Failed to validate contracts with backend',
+      });
+    } finally {
+      setContractsLoading(false);
+    }
+  };
+
+  const refreshAll = () => {
     fetchHealth();
+    fetchContracts();
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadInitialData = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/health`);
+        if (!res.ok) throw new Error(`HTTP error ${res.status}: ${res.statusText}`);
+        const data: HealthResponse = await res.json();
+        if (isMounted) {
+          setHealth(data);
+          setHealthError(null);
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          setHealthError(err.message || 'Failed to connect to backend');
+          setHealth(null);
+        }
+      } finally {
+        if (isMounted) setHealthLoading(false);
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/dev/contracts`);
+        if (!res.ok) throw new Error(`HTTP error ${res.status}: ${res.statusText}`);
+        const data = await res.json();
+        if (isMounted) {
+          setContractsCheck({ valid: data.contracts_valid === true, data });
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          setContractsCheck({
+            valid: false,
+            error: err.message || 'Failed to validate contracts with backend',
+          });
+        }
+      } finally {
+        if (isMounted) setContractsLoading(false);
+      }
+    };
+
+    loadInitialData();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const getStatusColor = (status: string) => {
@@ -152,8 +224,8 @@ export const DevTools: React.FC = () => {
             </h2>
           </div>
           <button
-            onClick={fetchHealth}
-            disabled={healthLoading}
+            onClick={refreshAll}
+            disabled={healthLoading || contractsLoading}
             style={{
               backgroundColor: '#17202b',
               color: '#e6edf3',
@@ -161,11 +233,11 @@ export const DevTools: React.FC = () => {
               padding: '6px 14px',
               borderRadius: '6px',
               fontSize: '13px',
-              cursor: healthLoading ? 'not-allowed' : 'pointer',
+              cursor: healthLoading || contractsLoading ? 'not-allowed' : 'pointer',
               fontWeight: 500,
             }}
           >
-            {healthLoading ? 'Checking...' : '↻ Refresh Health'}
+            {healthLoading || contractsLoading ? 'Checking...' : '↻ Refresh Status'}
           </button>
         </div>
 
@@ -264,6 +336,34 @@ export const DevTools: React.FC = () => {
               >
                 {health.watcher.toUpperCase()}
                 {health.next_poll_in_s ? ` (every ${health.next_poll_in_s}s)` : ''}
+              </div>
+            </div>
+            <div
+              style={{
+                backgroundColor: '#17202b',
+                padding: '12px',
+                borderRadius: '6px',
+                border: '1px solid #243040',
+              }}
+            >
+              <div style={{ color: '#8b98a5', fontSize: '12px' }}>Pydantic Contracts</div>
+              <div
+                style={{
+                  color:
+                    contractsCheck?.valid
+                      ? '#34d399'
+                      : contractsLoading
+                      ? '#94a3b8'
+                      : '#f87171',
+                  fontWeight: 600,
+                  fontSize: '15px',
+                }}
+              >
+                {contractsLoading
+                  ? 'CHECKING...'
+                  : contractsCheck?.valid
+                  ? 'VERIFIED (5/5)'
+                  : 'ERROR'}
               </div>
             </div>
           </div>
@@ -739,6 +839,7 @@ export const DevTools: React.FC = () => {
                 {JSON.stringify(
                   {
                     health,
+                    backendContractsValidation: contractsCheck,
                     fixtures: {
                       jobDraft: jobDraftData,
                       repoConnect: repoConnectData,

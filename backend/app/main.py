@@ -8,6 +8,7 @@ from backend.app.config import get_settings
 from backend.app.db import init_db
 from backend.app.routers.dev import router as dev_router
 from backend.app.routers.health import router as health_router
+from backend.app.routers.repos import router as repos_router
 
 settings = get_settings()
 
@@ -91,6 +92,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 # Mount routers
 app.include_router(health_router)
 app.include_router(dev_router)
+app.include_router(repos_router)
 
 
 @app.get("/")

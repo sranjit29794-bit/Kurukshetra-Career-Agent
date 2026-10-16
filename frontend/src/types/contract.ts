@@ -38,6 +38,7 @@ export interface ErrorDetail {
   code: string;
   message: string;
   retryable?: boolean;
+  reset_epoch?: number | null;
 }
 
 export interface ErrorResponse {

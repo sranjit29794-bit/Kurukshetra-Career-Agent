@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { DevTools } from './pages/DevTools';
+import { RepoMonitor } from './pages/RepoMonitor';
 
 export function App() {
   const [currentPath, setCurrentPath] = useState<string>(window.location.pathname);
@@ -17,50 +18,92 @@ export function App() {
     setCurrentPath(path);
   };
 
-  // If on /devtools or if directly accessed, render DevTools
-  if (currentPath === '/devtools' || currentPath.startsWith('/devtools')) {
-    return (
-      <div>
-        <nav
-          style={{
-            backgroundColor: '#0b0f14',
-            borderBottom: '1px solid #243040',
-            padding: '10px 20px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
+  // Common Header Nav for DevTools & RepoMonitor
+  const renderNav = (activeMode: 'devtools' | 'repomonitor') => (
+    <nav
+      style={{
+        backgroundColor: '#0b0f14',
+        borderBottom: '1px solid #243040',
+        padding: '10px 20px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '12px',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        <span
+          onClick={() => navigate('/')}
+          style={{ fontWeight: 700, color: '#e6edf3', fontSize: '15px', cursor: 'pointer' }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontWeight: 700, color: '#e6edf3', fontSize: '15px' }}>DevProof</span>
-            <span
-              style={{
-                backgroundColor: '#17202b',
-                color: '#2dd4bf',
-                padding: '2px 8px',
-                borderRadius: '4px',
-                fontSize: '11px',
-                fontWeight: 600,
-              }}
-            >
-              DevTools Mode
-            </span>
-          </div>
+          DevProof
+        </span>
+        <div style={{ display: 'flex', gap: '8px' }}>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/repo-monitor')}
             style={{
-              background: 'transparent',
-              border: '1px solid #243040',
-              color: '#8b98a5',
+              backgroundColor: activeMode === 'repomonitor' ? '#17202b' : 'transparent',
+              color: activeMode === 'repomonitor' ? '#2dd4bf' : '#8b98a5',
+              border: activeMode === 'repomonitor' ? '1px solid #2dd4bf' : '1px solid #243040',
               padding: '4px 10px',
               borderRadius: '4px',
               fontSize: '12px',
+              fontWeight: 600,
               cursor: 'pointer',
             }}
           >
-            ← Back to Home
+            🔍 Repo Monitor (Member 1)
           </button>
-        </nav>
+          <button
+            onClick={() => navigate('/devtools')}
+            style={{
+              backgroundColor: activeMode === 'devtools' ? '#17202b' : 'transparent',
+              color: activeMode === 'devtools' ? '#2dd4bf' : '#8b98a5',
+              border: activeMode === 'devtools' ? '1px solid #2dd4bf' : '1px solid #243040',
+              padding: '4px 10px',
+              borderRadius: '4px',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            🛠️ DevTools Testbed
+          </button>
+        </div>
+      </div>
+      <button
+        onClick={() => navigate('/')}
+        style={{
+          background: 'transparent',
+          border: '1px solid #243040',
+          color: '#8b98a5',
+          padding: '4px 10px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          cursor: 'pointer',
+        }}
+      >
+        ← Home
+      </button>
+    </nav>
+  );
+
+  // If on /repo-monitor, render RepoMonitor
+  if (currentPath === '/repo-monitor' || currentPath.startsWith('/repo-monitor')) {
+    return (
+      <div>
+        {renderNav('repomonitor')}
+        <RepoMonitor />
+      </div>
+    );
+  }
+
+  // If on /devtools, render DevTools
+  if (currentPath === '/devtools' || currentPath.startsWith('/devtools')) {
+    return (
+      <div>
+        {renderNav('devtools')}
         <DevTools />
       </div>
     );
@@ -129,22 +172,40 @@ export function App() {
         </ul>
       </div>
 
-      <button
-        onClick={() => navigate('/devtools')}
-        style={{
-          backgroundColor: '#2dd4bf',
-          color: '#0b0f14',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '6px',
-          fontWeight: 600,
-          fontSize: '14px',
-          cursor: 'pointer',
-          boxShadow: '0 0 15px rgba(45, 212, 191, 0.3)',
-        }}
-      >
-        Open Developer Verification Screen (/devtools) →
-      </button>
+      <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', justifyContent: 'center' }}>
+        <button
+          onClick={() => navigate('/repo-monitor')}
+          style={{
+            backgroundColor: '#2dd4bf',
+            color: '#0b0f14',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '6px',
+            fontWeight: 600,
+            fontSize: '14px',
+            cursor: 'pointer',
+            boxShadow: '0 0 15px rgba(45, 212, 191, 0.3)',
+          }}
+        >
+          🔍 Open Repository Monitor (/repo-monitor) →
+        </button>
+
+        <button
+          onClick={() => navigate('/devtools')}
+          style={{
+            backgroundColor: '#17202b',
+            color: '#e6edf3',
+            border: '1px solid #243040',
+            padding: '12px 20px',
+            borderRadius: '6px',
+            fontWeight: 600,
+            fontSize: '14px',
+            cursor: 'pointer',
+          }}
+        >
+          🛠️ DevTools Testbed (/devtools) →
+        </button>
+      </div>
     </div>
   );
 }
