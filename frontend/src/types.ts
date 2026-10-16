@@ -205,3 +205,5 @@ export interface ClaimsMatrixData {
   rows: ClaimsRow[];
 }
 
+export type ClaimsMatrix = ClaimsMatrixData;
+

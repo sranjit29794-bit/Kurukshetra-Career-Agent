@@ -73,6 +73,14 @@ This document tracks progress across all phases according to `docs/PLAN-5H.md` a
 - **Files Touched:** `backend/app/agents/resume_ingest.py`, `backend/app/routers/resume.py`, `backend/tests/ingest/test_resume_ingest.py`
 - **Test Gate:** PASS (117 tests passed across backend/tests, ruff check clean, ruff format clean, invariant scan clean)
 - **Libraries Looked Up:** pypdf
+- **Commit Hash:** `100c7fa`
+- **Open Issues:** None
+
+### Phase FE-2: Frontend Wiring, Unified API Layer & Error Envelope
+- **Status:** COMPLETED
+- **Files Touched:** `frontend/src/lib/api.ts`, `frontend/src/types.ts`, `frontend/vite.config.ts`, `.gitignore`, `docs/openapi.json`
+- **Test Gate:** PASS (oxlint 0 errors 0 warnings, tsc -b clean, vite build passed with manualChunks code splitting)
+- **Libraries Looked Up:** None
 - **Commit Hash:** Pending (next commit)
 - **Open Issues:** None
 
