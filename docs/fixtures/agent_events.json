@@ -1,0 +1,74 @@
+[
+  {
+    "id": 1,
+    "track_id": 1,
+    "analysis_id": 1,
+    "agent": "Orchestrator",
+    "level": "info",
+    "message": "Starting initial analysis run for commit a1b2c3d on branch main",
+    "timestamp": "2026-10-16T10:00:01Z"
+  },
+  {
+    "id": 2,
+    "track_id": 1,
+    "analysis_id": 1,
+    "agent": "Repo Scout",
+    "level": "info",
+    "message": "Fetched repository tree: 42 analyzable files identified (118 skipped by scope filter)",
+    "timestamp": "2026-10-16T10:00:03Z"
+  },
+  {
+    "id": 3,
+    "track_id": 1,
+    "analysis_id": 1,
+    "agent": "Evidence Analyst",
+    "level": "info",
+    "message": "Evaluating deterministic detectors for 5 confirmed requirements",
+    "timestamp": "2026-10-16T10:00:05Z"
+  },
+  {
+    "id": 4,
+    "track_id": 1,
+    "analysis_id": 1,
+    "agent": "Evidence Analyst",
+    "level": "warn",
+    "message": "Weak signal flagged: README.md claims PostgreSQL but no database queries exist in code (ignored)",
+    "timestamp": "2026-10-16T10:00:07Z"
+  },
+  {
+    "id": 5,
+    "track_id": 1,
+    "analysis_id": 1,
+    "agent": "Evidence Analyst",
+    "level": "warn",
+    "message": "Weak signal flagged: tests/test_smoke.py contains trivial 'assert True' without application assertions (ignored)",
+    "timestamp": "2026-10-16T10:00:08Z"
+  },
+  {
+    "id": 6,
+    "track_id": 1,
+    "analysis_id": 1,
+    "agent": "Verifier",
+    "level": "info",
+    "message": "Verified 2 evidence citations against file blobs at SHA a1b2c3d. Zero mismatches.",
+    "timestamp": "2026-10-16T10:00:10Z"
+  },
+  {
+    "id": 7,
+    "track_id": 1,
+    "analysis_id": 1,
+    "agent": "Coach",
+    "level": "info",
+    "message": "Generated requirement limitations and recommended next steps for developer growth",
+    "timestamp": "2026-10-16T10:00:13Z"
+  },
+  {
+    "id": 8,
+    "track_id": 1,
+    "analysis_id": 1,
+    "agent": "Orchestrator",
+    "level": "success",
+    "message": "Analysis 1 finished successfully with 2 DEMONSTRATED, 0 PARTIAL, 3 NOT_DEMONSTRATED",
+    "timestamp": "2026-10-16T10:00:15Z"
+  }
+]
