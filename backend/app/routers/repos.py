@@ -8,6 +8,7 @@ from backend.app.github.client import (
     GitHubClient,
     GitHubError,
     InvalidRepoUrlError,
+    InvalidTokenError,
     RateLimitError,
     RepoNotFoundError,
 )

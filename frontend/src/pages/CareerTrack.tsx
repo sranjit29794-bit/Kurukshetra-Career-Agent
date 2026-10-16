@@ -802,13 +802,15 @@ export const CareerTrack: React.FC<CareerTrackProps> = ({ onNavigate }) => {
               </div>
 
               {/* Specific Rate Limit Handling */}
-              {(repoErrorDetail.code === 'GITHUB_RATE_LIMITED' || repoErrorDetail.code === 'RATE_LIMIT_EXCEEDED' || repoErrorDetail.message.includes('rate limit')) && (
+              {(repoErrorDetail.code === 'GITHUB_RATE_LIMITED' || repoErrorDetail.code === 'RATE_LIMIT_EXCEEDED' || repoErrorDetail.message.toLowerCase().includes('rate limit')) && (
                 <div style={{ backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)', padding: '14px 18px', borderLeft: '4px solid var(--accent-amber)', marginTop: '12px' }}>
                   <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-amber)', marginBottom: '4px' }}>
                     Rate Limit Guidance & Reset Info
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '8px' }}>
-                    GitHub restricts unauthenticated REST requests to <strong>60 requests per hour per IP</strong>.
+                    {repoErrorDetail.message.toLowerCase().includes('authenticated')
+                      ? 'GitHub authenticated API quota (5,000 requests/hour) is temporarily rate-limited.'
+                      : 'GitHub restricts unauthenticated REST requests to 60 requests per hour per IP.'}
                     {repoErrorDetail.reset_epoch ? (
                       <span>
                         {' '}The quota will reset at <strong>{new Date(repoErrorDetail.reset_epoch * 1000).toLocaleTimeString()}</strong>.
@@ -816,7 +818,22 @@ export const CareerTrack: React.FC<CareerTrackProps> = ({ onNavigate }) => {
                     ) : null}
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--text-dim)', lineHeight: '1.5' }}>
-                    💡 <strong>To bypass this limit:</strong> Add a server-side <code>GITHUB_TOKEN=ghp_...</code> into <code>backend/.env</code> and restart the backend for 5,000 requests/hour. (Never paste tokens in client fields).
+                    💡 <strong>Resolution:</strong> Set <code>GITHUB_TOKEN=ghp_...</code> in your server <code>.env</code> file and restart the backend server for an authenticated 5,000 req/h quota.
+                  </div>
+                </div>
+              )}
+
+              {/* Specific Invalid / Expired Token Handling */}
+              {repoErrorDetail.code === 'GITHUB_INVALID_TOKEN' && (
+                <div style={{ backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)', padding: '14px 18px', borderLeft: '4px solid var(--accent-rose)', marginTop: '12px' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-rose)', marginBottom: '4px' }}>
+                    Invalid GitHub Token Configured
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '8px' }}>
+                    GitHub rejected the server token with HTTP 401 Unauthorized (Bad credentials). The token may be expired, revoked, or misspelled.
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-dim)', lineHeight: '1.5' }}>
+                    💡 <strong>Resolution:</strong> Generate a fresh Personal Access Token on GitHub with public repo access, update <code>GITHUB_TOKEN</code> in your server <code>.env</code>, and restart the backend server.
                   </div>
                 </div>
               )}

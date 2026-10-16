@@ -33,6 +33,11 @@ class RateLimitError(GitHubError):
         self.reset_epoch = reset_epoch
 
 
+class InvalidTokenError(GitHubError):
+    def __init__(self, message: str = "GitHub API rejected credentials (401 Unauthorized)"):
+        super().__init__(code="GITHUB_INVALID_TOKEN", message=message, status_code=401, retryable=False)
+
+
 class EmptyRepoError(GitHubError):
     def __init__(self, message: str = "Repository is empty and contains no commits"):
         super().__init__(code="EMPTY_REPOSITORY", message=message, status_code=422, retryable=False)
@@ -81,7 +86,7 @@ class GitHubClient:
 
     def __init__(self, token: Optional[str] = None, timeout: float = 20.0):
         settings = get_settings()
-        self.token = token or settings.GITHUB_TOKEN
+        self.token = token if token is not None else settings.GITHUB_TOKEN
         self.timeout = timeout
 
     @property
@@ -91,10 +96,17 @@ class GitHubClient:
             "User-Agent": "DevProof-Career-Agent/0.1.0",
         }
         if self.token:
-            headers["Authorization"] = f"Bearer {self.token}"
+            clean_token = self.token.strip()
+            headers["Authorization"] = f"Bearer {clean_token}"
         return headers
 
     def _check_rate_limit(self, response: httpx.Response) -> None:
+        if response.status_code == 401:
+            raise InvalidTokenError(
+                "GitHub API rejected server token (401 Unauthorized). Check that GITHUB_TOKEN in server .env is valid and not expired or revoked."
+            )
+
+        limit_header = response.headers.get("X-RateLimit-Limit")
         remaining = response.headers.get("X-RateLimit-Remaining")
         reset_header = response.headers.get("X-RateLimit-Reset")
         reset_epoch = int(reset_header) if reset_header and reset_header.isdigit() else None
@@ -110,10 +122,45 @@ class GitHubClient:
                 import datetime
                 reset_dt = datetime.datetime.fromtimestamp(reset_epoch, tz=datetime.timezone.utc)
                 reset_msg = f" Rate limit resets at {reset_dt.strftime('%H:%M:%S UTC')}."
+
+            # Delineate using actual header when present:
+            # GitHub sets X-RateLimit-Limit: 60 for unauthenticated, >= 1000 for authenticated tokens
+            is_unauthenticated = (limit_header == "60") or (not limit_header and not self.token)
+
+            if is_unauthenticated:
+                message = f"GitHub API unauthenticated rate limit (60 req/h) exceeded.{reset_msg} Set GITHUB_TOKEN in server .env for 5,000 req/h."
+            else:
+                limit_display = f"{int(limit_header):,} req/h" if (limit_header and limit_header.isdigit()) else "5,000 req/h"
+                message = f"GitHub API authenticated rate limit ({limit_display}) exceeded.{reset_msg}"
+
             raise RateLimitError(
-                f"GitHub API unauthenticated rate limit (60 req/h) exceeded.{reset_msg} Set GITHUB_TOKEN in server .env for 5,000 req/h.",
+                message,
                 reset_epoch=reset_epoch,
             )
+
+    async def get_rate_limit(self) -> Dict[str, Any]:
+        """Queries /rate_limit safely. Never throws RateLimitError."""
+        url = f"{self.BASE_URL}/rate_limit"
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(url, headers=self.headers)
+                if resp.status_code == 200:
+                    data = resp.json().get("rate", {})
+                    return {
+                        "authenticated": bool(self.token),
+                        "limit": data.get("limit", 5000 if self.token else 60),
+                        "remaining": data.get("remaining"),
+                        "reset_epoch": data.get("reset"),
+                    }
+        except Exception:
+            pass
+
+        return {
+            "authenticated": bool(self.token),
+            "limit": 5000 if self.token else 60,
+            "remaining": None,
+            "reset_epoch": None,
+        }
 
     async def get_repo_metadata(self, owner: str, repo: str) -> Dict[str, Any]:
         """Fetches repository metadata from GET /repos/{owner}/{repo}."""
