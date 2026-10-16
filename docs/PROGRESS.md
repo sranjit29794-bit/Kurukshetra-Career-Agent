@@ -97,9 +97,18 @@ This document tracks progress across all phases according to `docs/PLAN-5H.md` a
 - **Files Touched:** `backend/app/agents/evidence_judge.py`, `backend/tests/integration/test_hardening_edge_cases.py`
 - **Test Gate:** PASS (127 tests passed across backend/tests, ruff check clean, ruff format clean, all 9 edge cases passed: LLM down fallback to deterministic, LLM malformed JSON retry/error, GitHub 403/429 rate limit envelope, GitHub 5xx upstream envelope, upstream 404 job posting envelope, duplicate webhook dedupe idempotency, unrelated/docs commit impact empty, non-Python repo handling, secret hygiene scan)
 - **Libraries Looked Up:** None
+- **Commit Hash:** `eacbc39`
+- **Open Issues:** None
+
+### Phase 11: Documentation & Rehearsal Preparation
+- **Status:** COMPLETED
+- **Files Touched:** `README.md`, `docs/demo/DEMO_SCRIPT.md`, `docs/HUMAN_TODO.md`
+- **Test Gate:** PASS (Frontend oxlint clean, tsc -b clean, vite build passed; backend 127 tests passed; full demo integration flow executed 3 times including once with LLM_ENABLED=false, 0 console errors)
+- **Libraries Looked Up:** None
 - **Commit Hash:** Pending (next commit)
 - **Open Issues:** None
 
 ---
+
 
 
