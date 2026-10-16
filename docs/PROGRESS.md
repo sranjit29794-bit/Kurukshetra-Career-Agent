@@ -105,7 +105,7 @@ This document tracks progress across all phases according to `docs/PLAN-5H.md` a
 - **Files Touched:** `README.md`, `docs/demo/DEMO_SCRIPT.md`, `docs/HUMAN_TODO.md`
 - **Test Gate:** PASS (Frontend oxlint clean, tsc -b clean, vite build passed; backend 127 tests passed; full demo integration flow executed 3 times including once with LLM_ENABLED=false, 0 console errors)
 - **Libraries Looked Up:** None
-- **Commit Hash:** Pending (next commit)
+- **Commit Hash:** `bd76e78`
 - **Open Issues:** None
 
 ---
