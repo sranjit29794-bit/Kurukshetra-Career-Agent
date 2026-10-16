@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     LLM_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
     LLM_API_KEY: str = ""
     LLM_MODEL: str = "gemini-1.5-flash"
+    LLM_FALLBACK_MODEL: str = ""
     LLM_TIMEOUT_S: int = 45
     LLM_ENABLED: bool = True
 

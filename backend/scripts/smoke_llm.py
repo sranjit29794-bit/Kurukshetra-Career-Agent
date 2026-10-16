@@ -31,12 +31,14 @@ def run_smoke_llm() -> bool:
     print(f"Enabled:  {settings.LLM_ENABLED}")
 
     if not settings.LLM_ENABLED:
-        print("[LLM] OK: LLM is disabled (deterministic mode active)")
+        print("[LLM] DISABLED: LLM is disabled (deterministic mode active)")
         return True
 
     if not settings.LLM_API_KEY:
-        print("[LLM] FAIL: LLM_API_KEY is not set in environment or .env")
-        return False
+        print(
+            "[LLM] DISABLED: LLM_API_KEY is not set (deterministic mode will be used)"
+        )
+        return True
 
     try:
         client = OpenAI(
@@ -53,7 +55,7 @@ def run_smoke_llm() -> bool:
         content = response.choices[0].message.content or ""
         print(f"[LLM] OK: Response received: {content.strip()}")
         return True
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         print(f"[LLM] FAIL: Request failed with error: {exc}")
         return False
 

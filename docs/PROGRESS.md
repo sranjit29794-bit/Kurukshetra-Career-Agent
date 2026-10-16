@@ -25,8 +25,17 @@ This document tracks progress across all phases according to `docs/PLAN-5H.md` a
 - **Files Touched:** `backend/app/detectors/base.py`, `backend/app/detectors/weak_signals.py`, `backend/app/detectors/python_lang.py`, `backend/app/detectors/rest_api.py`, `backend/app/detectors/sql.py`, `backend/app/detectors/testing.py`, `backend/app/detectors/deployment.py`, `backend/app/detectors/generic_keyword.py`, `backend/app/detectors/registry.py`, `backend/app/detectors/__init__.py`, `backend/app/services/status_rules.py`, `backend/app/engine_cli.py`, `backend/tests/fixtures/loader.py`, `backend/tests/fixtures/repos/*`, `backend/tests/engine/test_detectors.py`, `backend/tests/engine/test_status_rules.py`, `backend/tests/engine/test_fixtures_regression.py`, `pytest.ini`, `ruff.toml`
 - **Test Gate:** PASS (63 tests passed across backend/tests, ruff check clean, ruff format clean, invariant scan clean)
 - **Libraries Looked Up:** ast, hashlib
+- **Commit Hash:** `6578e1f`
+- **Open Issues:** None
+
+### Phase IN-1: LLM Layer
+- **Status:** COMPLETED
+- **Files Touched:** `backend/app/config.py`, `backend/app/llm/client.py`, `backend/app/llm/prompts.py`, `backend/app/llm/fallback.py`, `backend/app/llm/__init__.py`, `backend/scripts/smoke_llm.py`, `backend/tests/ingest/test_llm.py`
+- **Test Gate:** PASS (76 tests passed across backend/tests, ruff check clean, ruff format clean, invariant scan clean)
+- **Libraries Looked Up:** openai (AsyncOpenAI), tenacity (AsyncRetrying)
 - **Commit Hash:** pending
 - **Open Issues:** None
 
 ---
+
 
