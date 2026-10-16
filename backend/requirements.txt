@@ -16,3 +16,5 @@ pytest-asyncio
 respx
 ruff
 python-dotenv
+psycopg[binary]
+pypdf

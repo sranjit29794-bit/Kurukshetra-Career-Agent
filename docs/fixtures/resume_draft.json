@@ -1,0 +1,54 @@
+{
+  "resume_id": "res_rohan_001",
+  "filename": "rohan_verma_resume.pdf",
+  "text_chars": 1840,
+  "claimed_skills": [
+    {
+      "skill": "Python",
+      "taxonomy_key": "python",
+      "source_line": 12,
+      "kind": "explicit"
+    },
+    {
+      "skill": "REST APIs",
+      "taxonomy_key": "rest_api",
+      "source_line": 14,
+      "kind": "explicit"
+    },
+    {
+      "skill": "SQL Database",
+      "taxonomy_key": "sql_database",
+      "source_line": 16,
+      "kind": "explicit"
+    },
+    {
+      "skill": "Testing",
+      "taxonomy_key": "testing",
+      "source_line": 18,
+      "kind": "explicit"
+    },
+    {
+      "skill": "Deployment",
+      "taxonomy_key": "deployment",
+      "source_line": 20,
+      "kind": "explicit"
+    }
+  ],
+  "repo_candidates": [
+    {
+      "url": "https://github.com/rohan-builds/student-api",
+      "owner": "rohan-builds",
+      "name": "student-api",
+      "kind": "repo",
+      "source": "hyperlink"
+    },
+    {
+      "url": "https://github.com/rohan-builds",
+      "owner": "rohan-builds",
+      "name": null,
+      "kind": "profile",
+      "source": "text"
+    }
+  ],
+  "warnings": []
+}

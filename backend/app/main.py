@@ -1,24 +1,23 @@
 """FastAPI application entry point for DevProof.
 
-Reference: docs/BRAIN.md (§6, §7.1, §13).
+Reference: docs/BRAIN.md (§6, §7.1, §13) and docs/PLAN-5H.md (§4, R0).
 """
 
 from __future__ import annotations
 
-import asyncio
-import json
+import importlib
+import pkgutil
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, status
+from fastapi import APIRouter, FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sse_starlette.sse import EventSourceResponse
 
+import backend.app.routers as routers_pkg
 from backend.app.config import settings
 from backend.app.db import init_db
-from backend.app.events import event_bus
-from backend.app.schemas import ErrorDetail, ErrorEnvelope, Health
+from backend.app.schemas import ErrorDetail, ErrorEnvelope
 
 
 @asynccontextmanager
@@ -47,48 +46,23 @@ app.add_middleware(
 )
 
 
-@app.get("/api/health", response_model=Health, tags=["Health"])
-async def get_health() -> Health:
-    """Return backend health, LLM connectivity, GitHub rate limits, and watcher status."""
-    return Health(
-        llm="ok" if settings.LLM_ENABLED else "disabled",
-        github="ok" if settings.GITHUB_TOKEN else "unauthenticated",
-        rate_remaining=5000 if settings.GITHUB_TOKEN else 60,
-        watcher="polling",
-        next_poll_in_s=settings.POLL_INTERVAL_S,
-    )
+def auto_discover_routers(application: FastAPI) -> list[str]:
+    """Auto-discover and mount every APIRouter exposed in backend.app.routers.
+
+    Enables lanes to add routes by creating router modules without editing main.py.
+    """
+    discovered: list[str] = []
+    for _, module_name, _ in pkgutil.iter_modules(routers_pkg.__path__):
+        module = importlib.import_module(f"backend.app.routers.{module_name}")
+        router = getattr(module, "router", None)
+        if isinstance(router, APIRouter):
+            application.include_router(router)
+            discovered.append(module_name)
+    return discovered
 
 
-@app.get("/api/events/stream", tags=["Events"])
-async def stream_events(
-    request: Request, track_id: str | None = None
-) -> EventSourceResponse:
-    """Server-Sent Events endpoint streaming real-time agent activity and reassessment updates."""
-
-    async def event_generator() -> AsyncGenerator[dict[str, str], None]:
-        queue = await event_bus.subscribe(track_id)
-        try:
-            # Send initial handshake
-            yield {
-                "event": "connected",
-                "data": json.dumps({"status": "connected", "track_id": track_id}),
-            }
-            while True:
-                if await request.is_disconnected():
-                    break
-                try:
-                    msg = await asyncio.wait_for(queue.get(), timeout=15.0)
-                    yield {
-                        "event": msg["event"],
-                        "data": json.dumps(msg["data"]),
-                    }
-                except TimeoutError:
-                    # Keep-alive heartbeat comment
-                    yield {"event": "ping", "data": "{}"}
-        finally:
-            await event_bus.unsubscribe(queue)
-
-    return EventSourceResponse(event_generator())
+# Auto-mount all discovered router modules
+discovered_routers = auto_discover_routers(app)
 
 
 @app.exception_handler(Exception)

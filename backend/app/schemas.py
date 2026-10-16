@@ -48,10 +48,32 @@ class Priority(str, Enum):
 
 
 class SourceType(str, Enum):
-    """Job draft source type per BRAIN §9."""
+    """Job draft source type per BRAIN §9 and PLAN-5H §1.2."""
 
     fetched = "fetched"
     user_provided = "user_provided"
+    api = "api"
+
+
+class ResumeClaimKind(str, Enum):
+    """Classification of how a resume claim was identified."""
+
+    explicit = "explicit"
+    inferred = "inferred"
+
+
+class RepoCandidateKind(str, Enum):
+    """Whether a candidate GitHub URL is a specific repo or a profile."""
+
+    repo = "repo"
+    profile = "profile"
+
+
+class RepoCandidateSource(str, Enum):
+    """How the link was extracted from the resume PDF/text."""
+
+    hyperlink = "hyperlink"
+    text = "text"
 
 
 class Trigger(str, Enum):
@@ -195,11 +217,79 @@ class JobDraft(BaseModel):
     company: str
     source_url: str
     source_type: SourceType = SourceType.fetched
+    source_detail: str = ""
     raw_text: str = ""
     requirements: list[RequirementIn] = Field(default_factory=list)
     ambiguities: list[str] = Field(default_factory=list)
     confirmed: bool = False
     created_at: str | None = None
+
+
+# --- Resume & Claims Matrix Models (PLAN-5H §1.2, §3, R0) ---
+
+
+class ResumeClaim(BaseModel):
+    """A skill claimed on a candidate's resume."""
+
+    skill: str
+    taxonomy_key: str | None = None
+    source_line: int | str
+    kind: ResumeClaimKind = ResumeClaimKind.explicit
+
+
+class RepoCandidate(BaseModel):
+    """A GitHub repository or profile discovered in a resume."""
+
+    url: str
+    owner: str
+    name: str | None = None
+    kind: RepoCandidateKind = RepoCandidateKind.repo
+    source: RepoCandidateSource = RepoCandidateSource.text
+
+
+class ResumeDraft(BaseModel):
+    """Extracted resume claims and candidate repositories."""
+
+    resume_id: str
+    filename: str
+    text_chars: int
+    claimed_skills: list[ResumeClaim] = Field(default_factory=list)
+    repo_candidates: list[RepoCandidate] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class ClaimsRepo(BaseModel):
+    """Repository column definition for the Claims Matrix."""
+
+    track_id: str
+    full_name: str
+    sha: str
+
+
+class ClaimsCell(BaseModel):
+    """Assessment status cell for a specific repository track."""
+
+    track_id: str
+    status: Status
+    strength: Strength
+
+
+class ClaimsRow(BaseModel):
+    """A single requirement row in the Claims Matrix."""
+
+    requirement_id: str
+    name: str
+    claimed: bool
+    claim_source_line: int | str | None = None
+    cells: list[ClaimsCell] = Field(default_factory=list)
+
+
+class ClaimsMatrix(BaseModel):
+    """Matrix comparing resume claims against repo assessments across tracks."""
+
+    job_id: str
+    repos: list[ClaimsRepo] = Field(default_factory=list)
+    rows: list[ClaimsRow] = Field(default_factory=list)
 
 
 # --- Evidence & Assessment Models (BRAIN §9, §10) ---
@@ -342,12 +432,23 @@ class Track(BaseModel):
     job_id: str
     repo_id: str
     branch: str = "main"
+    resume_id: str | None = None
     last_seen_sha: str | None = None
     watcher_mode: WatcherMode = WatcherMode.polling
     created_at: str | None = None
     job: JobDraft | None = None
     repo: Repo | None = None
     latest_analysis: Analysis | None = None
+    assessments: list[VerifiedAssessment] = Field(default_factory=list)
+
+
+class TrackCreate(BaseModel):
+    """Payload to create a new track linking a job and repo."""
+
+    job_id: str
+    repo_url: str
+    branch: str = "main"
+    resume_id: str | None = None
 
 
 class AgentEvent(BaseModel):

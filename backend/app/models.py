@@ -43,6 +43,7 @@ class JobModel(Base):
     source_type: Mapped[str] = mapped_column(
         String(32), default="fetched", nullable=False
     )
+    source_detail: Mapped[str] = mapped_column(String(255), default="", nullable=False)
     raw_text: Mapped[str] = mapped_column(Text, default="", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -105,6 +106,29 @@ class RepoModel(Base):
     tracks: Mapped[list[TrackModel]] = relationship(back_populates="repo")
 
 
+class ResumeModel(Base):
+    """Parsed candidate resume claims and candidate repositories."""
+
+    __tablename__ = "resumes"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    extracted_text: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    claimed_skills: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, default=list, nullable=False
+    )
+    repo_candidates: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, default=list, nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    tracks: Mapped[list[TrackModel]] = relationship(back_populates="resume")
+
+
 class TrackModel(Base):
     """Pairing of a job posting and a GitHub repository."""
 
@@ -116,6 +140,9 @@ class TrackModel(Base):
     )
     repo_id: Mapped[str] = mapped_column(
         ForeignKey("repos.id"), nullable=False, index=True
+    )
+    resume_id: Mapped[str | None] = mapped_column(
+        ForeignKey("resumes.id"), nullable=True, index=True
     )
     branch: Mapped[str] = mapped_column(String(64), default="main", nullable=False)
     last_seen_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -130,6 +157,7 @@ class TrackModel(Base):
 
     job: Mapped[JobModel] = relationship(back_populates="tracks")
     repo: Mapped[RepoModel] = relationship(back_populates="tracks")
+    resume: Mapped[ResumeModel | None] = relationship(back_populates="tracks")
     analyses: Mapped[list[AnalysisModel]] = relationship(back_populates="track")
     events: Mapped[list[AgentEventModel]] = relationship(back_populates="track")
 

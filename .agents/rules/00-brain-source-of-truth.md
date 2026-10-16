@@ -11,3 +11,5 @@ trigger: always_on
 
 - Context7: before using any library API (FastAPI lifespan, SQLAlchemy 2.x, sse-starlette, openai SDK, trafilatura, TanStack Query, react-router, shadcn, react-syntax-highlighter), check current docs via Context7. Don't code from memory.
 - Design skills (Impeccable, Taste, UI/UX Pro Max, Huashu) refine within BRAIN §16.1 tokens. They never override them. Not-demonstrated is never red, and there is no readiness %.
+
+   - docs/PLAN-5H.md overrides BRAIN.md and the old Playbook phases where they conflict. Read it every phase.

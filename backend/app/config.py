@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     POLL_INTERVAL_S: int = 20
     MAX_FILES_ANALYZED: int = 150
     MAX_FILE_BYTES: int = 100000
+    MAX_RESUME_BYTES: int = 5000000
+    MAX_REPOS_PER_JOB: int = 3
     CORS_ORIGINS: str = "http://localhost:5173"
 
     @property
