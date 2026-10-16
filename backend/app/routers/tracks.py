@@ -208,6 +208,111 @@ async def get_track(id: str, db: Annotated[Session, Depends(get_db)]) -> Track:
             created_at=t.repo.created_at.isoformat() if t.repo.created_at else None,
         )
 
+    job_schema = None
+    if t.job:
+        from backend.app.schemas import JobDraft, Priority, RequirementIn, SourceType
+
+        req_schemas = [
+            RequirementIn(
+                id=r.id,
+                name=r.name,
+                category=r.category,
+                priority=Priority(r.priority),
+                source_sentence=r.source_sentence,
+                taxonomy_key=r.taxonomy_key,
+                search_terms=r.search_terms or [],
+                position=r.position,
+            )
+            for r in t.job.requirements
+        ]
+        job_schema = JobDraft(
+            id=t.job.id,
+            title=t.job.title,
+            company=t.job.company,
+            source_url=t.job.source_url,
+            source_type=SourceType(t.job.source_type),
+            source_detail=t.job.source_detail,
+            raw_text=t.job.raw_text,
+            requirements=req_schemas,
+            confirmed=t.job.confirmed,
+            created_at=t.job.created_at.isoformat() if t.job.created_at else None,
+        )
+
+    latest_analysis_row = (
+        db.query(AnalysisModel)
+        .filter(AnalysisModel.track_id == t.id)
+        .order_by(AnalysisModel.started_at.desc())
+        .first()
+    )
+
+    analysis_schema = None
+    verified_assessments: list[VerifiedAssessment] = []
+
+    if latest_analysis_row:
+        from backend.app.schemas import (
+            Analysis,
+            AnalysisKind,
+            AnalysisStatus,
+            Evidence,
+            Status,
+            Strength,
+            Trigger,
+            VerifiedAssessment,
+        )
+
+        analysis_schema = Analysis(
+            id=latest_analysis_row.id,
+            track_id=latest_analysis_row.track_id,
+            commit_sha=latest_analysis_row.commit_sha,
+            commit_message=latest_analysis_row.commit_message,
+            trigger=Trigger(latest_analysis_row.trigger),
+            kind=AnalysisKind(latest_analysis_row.kind),
+            status=AnalysisStatus(latest_analysis_row.status),
+            files_analyzed_count=latest_analysis_row.files_analyzed_count,
+            started_at=(
+                latest_analysis_row.started_at.isoformat()
+                if latest_analysis_row.started_at
+                else None
+            ),
+            finished_at=(
+                latest_analysis_row.finished_at.isoformat()
+                if latest_analysis_row.finished_at
+                else None
+            ),
+        )
+
+        for a in latest_analysis_row.assessments:
+            ev_list = [
+                Evidence(
+                    signal_id=e.signal_id,
+                    detector=e.detector,
+                    file_path=e.file_path,
+                    line_start=e.line_start,
+                    line_end=e.line_end,
+                    blob_sha=e.blob_sha,
+                    snippet=e.snippet,
+                    reason=e.reason,
+                    strength=Strength(e.strength),
+                    verified_at_sha=e.verified_at_sha,
+                )
+                for e in a.evidence
+            ]
+            verified_assessments.append(
+                VerifiedAssessment(
+                    requirement_id=a.requirement_id,
+                    status=Status(a.status),
+                    strength=Strength(a.strength),
+                    summary=a.summary,
+                    limitation=a.limitation,
+                    next_step=a.next_step,
+                    carried_forward=a.carried_forward,
+                    reassessed=a.reassessed,
+                    ignored_signals=a.ignored_signals or [],
+                    ai_used=a.ai_used,
+                    evidence=ev_list,
+                )
+            )
+
     return Track(
         id=t.id,
         job_id=t.job_id,
@@ -218,6 +323,9 @@ async def get_track(id: str, db: Annotated[Session, Depends(get_db)]) -> Track:
         watcher_mode=WatcherMode(t.watcher_mode),
         created_at=t.created_at.isoformat() if t.created_at else None,
         repo=repo_schema,
+        job=job_schema,
+        latest_analysis=analysis_schema,
+        assessments=verified_assessments,
     )
 
 

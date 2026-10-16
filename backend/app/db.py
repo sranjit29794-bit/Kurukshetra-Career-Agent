@@ -38,8 +38,8 @@ def create_app_engine(database_url: str) -> Engine:
     return create_engine(database_url, echo=False)
 
 
-# Default engine instance bound to configured settings.DATABASE_URL
-engine = create_app_engine(settings.DATABASE_URL)
+# Default engine instance bound to configured settings.resolved_database_url
+engine = create_app_engine(settings.resolved_database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

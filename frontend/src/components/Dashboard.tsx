@@ -25,7 +25,7 @@ import { AgentRow } from './AgentRow';
 import { LiveChip } from './LiveChip';
 import { ChangeDetectionCard } from './ChangeDetectionCard';
 import { useSSE } from '../hooks/useSSE';
-import { api } from '../lib/api';
+import { api, FORCE_FIXTURES } from '../lib/api';
 
 interface DashboardProps {
   opportunities: TrackOpportunity[];
@@ -57,7 +57,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // SSE hook with live push simulation engine (§19.2)
   const sse = useSSE({
     trackId: activeOpportunity?.id || 'track_demo',
-    fixtureMode: true,
+    fixtureMode: FORCE_FIXTURES,
     onAnalysisComplete: (sha) => {
       if (sha.startsWith('c3d4e5f')) {
         setCurrentCommitMode('c2');
@@ -150,11 +150,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // If there are real opportunity assessments, map them; otherwise use canonical set
   const skillsToDisplay =
-    currentCommitMode === 'c2' && activeOpportunity?.job?.requirements?.length === 6
+    activeOpportunity?.job?.requirements && activeOpportunity.job.requirements.length > 0
       ? activeOpportunity.job.requirements.map((req) => {
-          const asmt = activeOpportunity.assessments.find((a) => a.requirement_id === req.id);
+          const asmt = activeOpportunity.assessments?.find((a) => a.requirement_id === req.id);
           const ev = asmt?.evidence?.[0];
-          const isNotDem = asmt?.status === 'NOT_DEMONSTRATED';
+          const isNotDem = asmt ? asmt.status === 'NOT_DEMONSTRATED' : true;
           const location = isNotDem
             ? 'Not found in analyzed scope'
             : ev

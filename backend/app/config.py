@@ -54,5 +54,30 @@ class Settings(BaseSettings):
             origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()
         ]
 
+    @property
+    def resolved_database_url(self) -> str:
+        """Resolve database URL ensuring SQLite relative paths resolve to project root."""
+        if self.DATABASE_URL.startswith("sqlite"):
+            if ":memory:" in self.DATABASE_URL:
+                return self.DATABASE_URL
+            prefix = "sqlite:///"
+            if self.DATABASE_URL.startswith(prefix):
+                raw = self.DATABASE_URL[len(prefix) :]
+                p = Path(raw)
+                if not p.is_absolute():
+                    abs_p = (_project_root / raw).resolve()
+                    return f"sqlite:///{abs_p.as_posix()}"
+                return f"sqlite:///{p.resolve().as_posix()}"
+        return self.DATABASE_URL
+
+    @property
+    def db_file_path(self) -> str:
+        """Return the absolute path of the SQLite database file if applicable."""
+        if self.resolved_database_url.startswith("sqlite:///"):
+            raw = self.resolved_database_url.replace("sqlite:///", "")
+            if ":memory:" not in raw:
+                return str(Path(raw).resolve())
+        return self.DATABASE_URL
+
 
 settings = Settings()

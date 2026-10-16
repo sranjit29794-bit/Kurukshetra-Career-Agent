@@ -37,7 +37,7 @@ interface ResultsViewProps {
 }
 
 export const ResultsView: React.FC<ResultsViewProps> = ({
-  track: _track,
+  track,
   requirementId = 'req_sql_database',
   onBackToDashboard,
   onSelectSkill: _onSelectSkill,
@@ -61,11 +61,12 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
     end: 30,
   });
 
-  // Choose active dataset based on fixtureMode
+  // Choose active dataset: prefer real track prop, else fixture
   const activeDataset: TrackOpportunity =
-    fixtureMode === 'c0'
+    track ||
+    (fixtureMode === 'c0'
       ? (trackC0 as unknown as TrackOpportunity)
-      : (trackC2 as unknown as TrackOpportunity);
+      : (trackC2 as unknown as TrackOpportunity));
 
   const selectedSkillId = requirementId || 'req_sql_database';
 

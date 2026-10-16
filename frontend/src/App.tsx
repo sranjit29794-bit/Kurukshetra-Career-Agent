@@ -11,6 +11,7 @@ import { DevComponentsShowcase } from './components/DevComponentsShowcase';
 import { ClaimsMatrixView } from './components/ClaimsMatrixView';
 import type { JobDraft, TrackOpportunity, RecentChange, NextAction } from './types';
 import trackC2 from '../../docs/fixtures/track_assessment_c2.json';
+import { api, FORCE_FIXTURES } from './lib/api';
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState<string>(
@@ -35,10 +36,64 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
-  // Tracked Opportunities state initialized with canonical C2 fixture (6 skills)
-  const [opportunities, setOpportunities] = useState<TrackOpportunity[]>([
-    trackC2 as unknown as TrackOpportunity,
-  ]);
+  // Tracked Opportunities state (loads real tracks from SQLite DB; fixture only if VITE_USE_FIXTURES=1)
+  const [opportunities, setOpportunities] = useState<TrackOpportunity[]>(
+    FORCE_FIXTURES ? [trackC2 as unknown as TrackOpportunity] : []
+  );
+
+  const [healthInfo, setHealthInfo] = useState<{
+    watcherMode: 'webhook' | 'polling';
+    nextPollInSeconds: number;
+    llmMode: 'ai_on' | 'deterministic';
+    rateLimitRemaining: number;
+    mode: 'real' | 'fixtures';
+  }>({
+    watcherMode: 'polling',
+    nextPollInSeconds: 15,
+    llmMode: 'ai_on',
+    rateLimitRemaining: 5000,
+    mode: FORCE_FIXTURES ? 'fixtures' : 'real',
+  });
+
+  // Load real health and real tracks on mount
+  useEffect(() => {
+    let isMounted = true;
+    async function loadData() {
+      try {
+        const health = await api.getHealth();
+        if (isMounted && health) {
+          setHealthInfo({
+            watcherMode: health.watcher === 'webhook' ? 'webhook' : 'polling',
+            nextPollInSeconds: health.next_poll_in_s || 15,
+            llmMode: health.llm === 'disabled' ? 'deterministic' : 'ai_on',
+            rateLimitRemaining: health.rate_remaining ?? 5000,
+            mode: health.mode === 'fixtures' ? 'fixtures' : 'real',
+          });
+        }
+      } catch (err) {
+        console.warn('Could not fetch health from backend:', err);
+      }
+
+      if (!FORCE_FIXTURES) {
+        try {
+          const realTracks = await api.getTracks();
+          if (isMounted && realTracks) {
+            setOpportunities(realTracks);
+            if (realTracks.length > 0) {
+              setSelectedTrackId(realTracks[0].id);
+            }
+          }
+        } catch (err) {
+          console.warn('Could not fetch real tracks from backend:', err);
+        }
+      }
+    }
+
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Recent changes feed
   const recentChanges: RecentChange[] = [
@@ -96,7 +151,29 @@ export default function App() {
     },
   ];
 
-  const handleWizardComplete = (job: JobDraft, repoUrl: string) => {
+  const handleWizardComplete = async (job: JobDraft, repoUrl: string) => {
+    if (!FORCE_FIXTURES) {
+      try {
+        const savedJob = await api.saveJob(job);
+        const trackResp = await api.createTrack({
+          jobId: savedJob.id || job.id || 'job_demo',
+          repoUrl,
+        });
+        try {
+          await api.checkNow(trackResp.id);
+        } catch {
+          // ignore if offline
+        }
+        const refreshed = await api.getTracks();
+        setOpportunities(refreshed);
+        setSelectedTrackId(trackResp.id);
+        navigate(`/tracks/${trackResp.id}`);
+        return;
+      } catch (err) {
+        console.error('Failed to create track in backend:', err);
+      }
+    }
+
     const newOpportunity: TrackOpportunity = {
       id: `track_${Date.now()}`,
       job,
@@ -248,10 +325,11 @@ export default function App() {
       >
         {/* Top Header Bar */}
         <TopBar
-          watcherMode="webhook"
-          nextPollInSeconds={15}
-          llmMode="ai_on"
-          rateLimitRemaining={4982}
+          watcherMode={healthInfo.watcherMode}
+          nextPollInSeconds={healthInfo.nextPollInSeconds}
+          llmMode={healthInfo.llmMode}
+          rateLimitRemaining={healthInfo.rateLimitRemaining}
+          isFixtureMode={FORCE_FIXTURES || healthInfo.mode === 'fixtures'}
           onNavigate={navigate}
         />
 

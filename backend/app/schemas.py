@@ -497,6 +497,9 @@ class Health(BaseModel):
     rate_remaining: int
     watcher: str
     next_poll_in_s: int
+    db_path: str = ""
+    row_counts: dict[str, int] = Field(default_factory=dict)
+    mode: str = "real"
 
 
 class EvidenceFile(BaseModel):

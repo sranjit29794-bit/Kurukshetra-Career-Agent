@@ -8,13 +8,14 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from backend.app.config import settings
 from backend.app.db import get_db
 from backend.app.github.client import get_github_client
-from backend.app.models import WebhookDeliveryModel
+from backend.app.models import Base, WebhookDeliveryModel
 from backend.app.schemas import Health
 
 router = APIRouter(tags=["Health"])
@@ -45,10 +46,21 @@ async def get_health(db: Annotated[Session, Depends(get_db)]) -> Health:
     except SQLAlchemyError:
         watcher_mode = "polling"
 
+    row_counts: dict[str, int] = {}
+    for table_name in Base.metadata.tables:
+        try:
+            count = db.execute(text(f"SELECT COUNT(*) FROM {table_name}")).scalar() or 0
+            row_counts[table_name] = int(count)
+        except Exception:
+            row_counts[table_name] = 0
+
     return Health(
         llm="ok" if settings.LLM_ENABLED else "disabled",
         github=github_status,
         rate_remaining=rate_rem,
         watcher=watcher_mode,
         next_poll_in_s=settings.POLL_INTERVAL_S,
+        db_path=settings.db_file_path,
+        row_counts=row_counts,
+        mode="real",
     )
