@@ -6,6 +6,7 @@ Reference: docs/BRAIN.md (§5, §6, §7.1, §13).
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from typing import Any
 
 
@@ -49,11 +50,8 @@ class EventBus:
 
         for queue, filter_track_id in subscribers:
             if filter_track_id is None or filter_track_id == track_id:
-                try:
+                with contextlib.suppress(asyncio.QueueFull):
                     queue.put_nowait(payload)
-                except asyncio.QueueFull:
-                    # Drop slow subscriber message to avoid blocking pipeline
-                    pass
 
 
 event_bus = EventBus()

@@ -22,7 +22,7 @@ def test_job_draft_fixture_validates():
     """Verify job_draft.json loads and matches JobDraft schema."""
     path = FIXTURES_DIR / "job_draft.json"
     assert path.exists(), f"Missing fixture: {path}"
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         data = json.load(f)
     job = JobDraft.model_validate(data)
     assert job.id == "job_devproof_demo"
@@ -33,7 +33,7 @@ def test_track_assessment_c0_validates():
     """Verify track_assessment_c0.json matches Track schema and C0 demo statuses."""
     path = FIXTURES_DIR / "track_assessment_c0.json"
     assert path.exists(), f"Missing fixture: {path}"
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         data = json.load(f)
     track = Track.model_validate(data)
     assert track.id == "track_demo"
@@ -55,7 +55,7 @@ def test_track_assessment_c2_validates():
     """Verify track_assessment_c2.json matches Track schema and C2 demo statuses."""
     path = FIXTURES_DIR / "track_assessment_c2.json"
     assert path.exists(), f"Missing fixture: {path}"
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         data = json.load(f)
     track = Track.model_validate(data)
     assert track.latest_analysis is not None
@@ -77,7 +77,7 @@ def test_diff_c0_c2_validates():
     """Verify diff_c0_c2.json matches Diff schema and delta items."""
     path = FIXTURES_DIR / "diff_c0_c2.json"
     assert path.exists(), f"Missing fixture: {path}"
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         data = json.load(f)
     diff = Diff.model_validate(data)
     assert diff.from_sha.startswith("a1b2c3d")
@@ -104,7 +104,7 @@ def test_events_fixture_validates():
     """Verify events.json matches list[AgentEvent] schema."""
     path = FIXTURES_DIR / "events.json"
     assert path.exists(), f"Missing fixture: {path}"
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         data = json.load(f)
     events = [AgentEvent.model_validate(item) for item in data]
     assert len(events) >= 5
@@ -117,7 +117,7 @@ def test_health_fixture_validates():
     """Verify health.json matches Health schema."""
     path = FIXTURES_DIR / "health.json"
     assert path.exists(), f"Missing fixture: {path}"
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         data = json.load(f)
     health = Health.model_validate(data)
     assert health.llm == "ok"

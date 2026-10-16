@@ -1,0 +1,20 @@
+exclude = [
+    "backend/tests/fixtures/repos",
+    "node_modules",
+    ".git",
+    ".venv",
+    "venv",
+    ".pytest_cache",
+    ".ruff_cache",
+]
+
+[lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = [
+    "E501",   # line length
+    "B008",   # Depends in argument defaults
+    "UP042",  # StrEnum inheritance (str, Enum is standard for Pydantic v2 schema serializing)
+    "RUF002", # ambiguous en-dash in docstring comments
+    "E402",   # module import after sys.path manipulation in standalone scripts
+    "RUF059", # unused unpacked variable
+]
