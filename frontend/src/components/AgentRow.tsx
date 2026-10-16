@@ -18,11 +18,25 @@ export interface AgentRowProps {
 
 const getAgentStyle = (agent: string) => {
   const a = agent.toLowerCase();
-  if (a.includes('code') || a.includes('repo')) {
+  if (a.includes('job')) {
+    return {
+      bg: 'linear-gradient(135deg, rgba(52, 211, 153, 0.25) 0%, rgba(16, 149, 106, 0.4) 100%)',
+      color: '#34D399',
+      icon: FileText,
+    };
+  }
+  if (a.includes('scout') || a.includes('repo')) {
     return {
       bg: 'linear-gradient(135deg, rgba(47, 109, 246, 0.25) 0%, rgba(30, 58, 138, 0.4) 100%)',
       color: '#60A5FA',
       icon: Code2,
+    };
+  }
+  if (a.includes('sentinel') || a.includes('change') || a.includes('impact')) {
+    return {
+      bg: 'linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(180, 83, 9, 0.4) 100%)',
+      color: '#FBBF24',
+      icon: Zap,
     };
   }
   if (a.includes('evidence') || a.includes('collector')) {
@@ -39,18 +53,11 @@ const getAgentStyle = (agent: string) => {
       icon: CheckCircle2,
     };
   }
-  if (a.includes('impact') || a.includes('analyzer')) {
+  if (a.includes('coach')) {
     return {
-      bg: 'linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(180, 83, 9, 0.4) 100%)',
-      color: '#FBBF24',
-      icon: Zap,
-    };
-  }
-  if (a.includes('job') || a.includes('requirement')) {
-    return {
-      bg: 'linear-gradient(135deg, rgba(52, 211, 153, 0.25) 0%, rgba(16, 149, 106, 0.4) 100%)',
-      color: '#34D399',
-      icon: FileText,
+      bg: 'linear-gradient(135deg, rgba(244, 114, 182, 0.25) 0%, rgba(190, 24, 93, 0.4) 100%)',
+      color: '#F472B6',
+      icon: Bot,
     };
   }
   return {

@@ -31,7 +31,7 @@ interface DashboardProps {
   recentChanges: RecentChange[];
   nextActions: NextAction[];
   onAddJob: () => void;
-  onSelectTrack: (trackId: string) => void;
+  onSelectTrack: (trackId: string, reqId?: string) => void;
   onNavigateActivity?: () => void;
 }
 
@@ -71,6 +71,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Testing capped at PARTIAL; Deployment & CI/CD stay NOT_DEMONSTRATED
   const referenceSkills = [
     {
+      id: 'req_python',
       name: 'Python',
       status: 'DEMONSTRATED' as const,
       location: 'Found in app/db.py (lines 1-20)',
@@ -78,12 +79,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
       changeCount: 1,
     },
     {
+      id: 'req_rest_api',
       name: 'FastAPI / REST APIs',
       status: 'DEMONSTRATED' as const,
       location: 'Found in app/main.py (lines 15-38)',
       changeType: 'no_change' as const,
     },
     {
+      id: 'req_sql_database',
       name: 'SQL',
       status: 'DEMONSTRATED' as const,
       location: 'Found in app/db.py (lines 12-30)',
@@ -91,6 +94,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       changeCount: 1,
     },
     {
+      id: 'req_testing',
       name: 'Testing',
       status: 'PARTIAL' as const,
       location: 'Found in tests/test_db.py (lines 8-24)',
@@ -98,12 +102,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
       changeCount: 1,
     },
     {
+      id: 'req_deployment',
       name: 'Deployment',
       status: 'NOT_DEMONSTRATED' as const,
       location: 'Not found in analyzed scope',
       changeType: 'not_reassessed' as const,
     },
     {
+      id: 'req_ci_cd',
       name: 'CI/CD (GitHub Actions)',
       status: 'NOT_DEMONSTRATED' as const,
       location: 'Not found in analyzed scope',
@@ -131,6 +137,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             : ('no_change' as const);
 
           return {
+            id: req.id,
             name: req.name,
             status: asmt?.status || ('NOT_DEMONSTRATED' as const),
             location,
@@ -497,7 +504,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 {skillsToDisplay.map((skill, idx) => (
                   <div
                     key={skill.name || idx}
-                    onClick={() => activeOpportunity && onSelectTrack(activeOpportunity.id)}
+                    onClick={() => activeOpportunity && onSelectTrack(activeOpportunity.id, skill.id)}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -609,23 +616,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 {/* Agent Rows */}
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <AgentRow
-                    agent="Code Analyzer"
-                    message="Parsed 12 files for skill matching"
+                    agent="Repo Scout"
+                    message="Resolved HEAD SHA c3d4e5f on branch main"
                     timestamp="2m ago"
                   />
                   <AgentRow
-                    agent="Evidence Collector"
-                    message="Found 3 new evidence snippets"
+                    agent="Change Sentinel"
+                    message="Detected commit c3d4e5f • reassessing 4 skills"
                     timestamp="3m ago"
                   />
                   <AgentRow
-                    agent="Verifier"
-                    message="Validated 3 citations"
+                    agent="Evidence Analyst"
+                    message="Found 1 strong SQL signal in app/db.py:12-30"
                     timestamp="4m ago"
                   />
                   <AgentRow
-                    agent="Impact Analyzer"
-                    message="Detected 2 changed skills"
+                    agent="Verifier"
+                    message="Validated citations at c3d4e5f (0 mismatches)"
                     timestamp="5m ago"
                   />
                 </div>

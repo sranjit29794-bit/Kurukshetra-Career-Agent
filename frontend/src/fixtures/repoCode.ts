@@ -144,6 +144,62 @@ def test_get_item_by_id_found(temp_db):
 `,
   },
 
+  'backend/app/models.py': {
+    path: 'backend/app/models.py',
+    sha: 'c3d4e5f67890123456789abcdef0123456789012',
+    language: 'python',
+    content: `from sqlalchemy import Column, Integer, String, DateTime
+from datetime import datetime
+from backend.app.database import Base
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), nullable=False)
+    email = Column(String(255), unique=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<User id={self.id} name={self.name}>"
+`,
+  },
+
+  'backend/app/database.py': {
+    path: 'backend/app/database.py',
+    sha: 'c3d4e5f67890123456789abcdef0123456789012',
+    language: 'python',
+    content: `from sqlalchemy import create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
+
+DATABASE_URL = "sqlite:///./devproof.db"
+
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False}
+)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+`,
+  },
+
+  'backend/app/services/data_processor.py': {
+    path: 'backend/app/services/data_processor.py',
+    sha: 'c3d4e5f67890123456789abcdef0123456789012',
+    language: 'python',
+    content: `from sqlalchemy import select
+from backend.app.database import SessionLocal
+from backend.app.models import User
+
+def get_user_data(user_id: int):
+    """Retrieve user entity by primary key using SQLAlchemy select query."""
+    with SessionLocal() as db:
+        query = select(User).where(User.id == user_id)
+        return db.execute(query).fetchone()
+`,
+  },
+
   'README.md': {
     path: 'README.md',
     sha: 'c3d4e5f67890123456789abcdef0123456789012',
@@ -152,10 +208,10 @@ def test_get_item_by_id_found(temp_db):
 
 A high-performance FastAPI backend service.
 
-## Features
+## Stack
+- Built with PostgreSQL database backend
 - FastAPI route handlers with Pydantic request models
-- Parameterized SQLite query execution
-- Pytest suite with isolated test fixtures
+- Pytest test suite
 
 ## Running Locally
 \`\`\`bash

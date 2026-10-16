@@ -3,28 +3,28 @@
     "id": 1,
     "track_id": "track_demo",
     "analysis_id": "analysis_c2",
-    "agent": "Repo Scout",
+    "agent": "Job Analyst",
     "level": "info",
-    "message": "Resolved HEAD SHA c3d4e5f on branch main (3 files changed)",
-    "ts": "2026-10-16T12:15:02Z"
+    "message": "Extracted 6 verified requirements from Kinetik Health posting",
+    "ts": "2026-10-16T12:15:00Z"
   },
   {
     "id": 2,
     "track_id": "track_demo",
     "analysis_id": "analysis_c2",
-    "agent": "Change Sentinel",
+    "agent": "Repo Scout",
     "level": "info",
-    "message": "Impact plan: reassessing 4 skills (SQL Database, Testing, REST APIs, Python); carrying forward Deployment",
-    "ts": "2026-10-16T12:15:03Z"
+    "message": "Resolved HEAD SHA c3d4e5f on branch main (6 Python files in scope)",
+    "ts": "2026-10-16T12:15:02Z"
   },
   {
     "id": 3,
     "track_id": "track_demo",
     "analysis_id": "analysis_c2",
-    "agent": "Evidence Analyst",
+    "agent": "Change Sentinel",
     "level": "info",
-    "message": "Running detectors on 6 files. Found 1 strong SQL signal in app/db.py:12-30",
-    "ts": "2026-10-16T12:15:05Z"
+    "message": "Impact plan: reassessing 4 skills (Python, FastAPI, SQL, Testing); carrying forward Deployment & CI/CD",
+    "ts": "2026-10-16T12:15:03Z"
   },
   {
     "id": 4,
@@ -32,8 +32,8 @@
     "analysis_id": "analysis_c2",
     "agent": "Evidence Analyst",
     "level": "info",
-    "message": "Found 1 strong testing signal in tests/test_db.py:8-24 with assertions against temp DB",
-    "ts": "2026-10-16T12:15:06Z"
+    "message": "Found 1 strong SQL signal in app/db.py:12-30 and 1 testing signal in tests/test_db.py:8-24",
+    "ts": "2026-10-16T12:15:05Z"
   },
   {
     "id": 5,
@@ -61,14 +61,5 @@
     "level": "success",
     "message": "Drafted diff explanation: SQL moved Not demonstrated → Demonstrated; Testing moved Not demonstrated → Partially demonstrated",
     "ts": "2026-10-16T12:15:08Z"
-  },
-  {
-    "id": 8,
-    "track_id": "track_demo",
-    "analysis_id": "analysis_c2",
-    "agent": "Orchestrator",
-    "level": "success",
-    "message": "Reassessment completed successfully for commit c3d4e5f in 1.4s",
-    "ts": "2026-10-16T12:15:09Z"
   }
 ]

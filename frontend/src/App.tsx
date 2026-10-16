@@ -176,10 +176,16 @@ export default function App() {
       );
     }
     if (currentPath.startsWith('/tracks/')) {
+      const match = currentPath.match(/^\/tracks\/([^/]+)(?:\/skills\/([^/]+))?/);
+      const trackId = match ? match[1] : activeTrack?.id || 'track_demo';
+      const reqId = match && match[2] ? match[2] : 'req_sql_database';
+
       return (
         <ResultsView
           track={activeTrack}
+          requirementId={reqId}
           onBackToDashboard={() => navigate('/')}
+          onSelectSkill={(newReqId) => navigate(`/tracks/${trackId}/skills/${newReqId}`)}
         />
       );
     }
@@ -191,9 +197,9 @@ export default function App() {
         recentChanges={recentChanges}
         nextActions={nextActions}
         onAddJob={() => navigate('/add-job')}
-        onSelectTrack={(id) => {
+        onSelectTrack={(id, reqId) => {
           setSelectedTrackId(id);
-          navigate(`/tracks/${id}`);
+          navigate(`/tracks/${id}/skills/${reqId || 'req_sql_database'}`);
         }}
         onNavigateActivity={() => navigate('/activity')}
       />

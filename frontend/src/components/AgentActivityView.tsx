@@ -5,39 +5,34 @@ import { LiveChip } from './LiveChip';
 export const AgentActivityView: React.FC = () => {
   const agents = [
     {
-      agent: 'Job Requirements Agent',
-      message: 'Parsed 8 key requirements from the job posting',
+      agent: 'Job Analyst',
+      message: 'Extracted 6 verified requirements from Kinetik Health posting',
       timestamp: '2m ago',
     },
     {
-      agent: 'Repo Analyzer Agent',
-      message: 'Scanned 24 files in the repository',
+      agent: 'Repo Scout',
+      message: 'Resolved HEAD SHA c3d4e5f on branch main (6 Python files in scope)',
       timestamp: '3m ago',
     },
     {
-      agent: 'Code Analysis Agent',
-      message: 'Analyzed code for skill matches',
+      agent: 'Change Sentinel',
+      message: 'Impact plan: reassessing 4 skills; carrying forward Deployment & CI/CD',
       timestamp: '4m ago',
     },
     {
-      agent: 'Evidence Collector Agent',
-      message: 'Found 7 evidence snippets',
+      agent: 'Evidence Analyst',
+      message: 'Found 1 strong SQL signal in app/db.py:12-30 and 1 testing signal in tests/test_db.py:8-24',
       timestamp: '5m ago',
     },
     {
-      agent: 'Verifier Agent',
-      message: 'Validated 5 citations against source files',
+      agent: 'Verifier',
+      message: 'Verified cited line ranges at commit c3d4e5f (0 mismatches)',
       timestamp: '6m ago',
     },
     {
-      agent: 'Impact Analyzer Agent',
-      message: 'Detected 2 changed skills (SQL, Testing)',
+      agent: 'Coach',
+      message: 'Drafted diff explanation: SQL moved Not demonstrated → Demonstrated',
       timestamp: '7m ago',
-    },
-    {
-      agent: 'Report Generator Agent',
-      message: 'Finalizing assessment report...',
-      timestamp: '8m ago',
     },
   ];
 
