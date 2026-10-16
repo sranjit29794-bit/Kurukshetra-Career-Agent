@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse
 import backend.app.routers as routers_pkg
 from backend.app.config import settings
 from backend.app.db import init_db
+from backend.app.github.client import GitHubAPIError
 from backend.app.schemas import ErrorDetail, ErrorEnvelope
 
 
@@ -64,6 +65,17 @@ def auto_discover_routers(application: FastAPI) -> list[str]:
 
 # Auto-mount all discovered router modules
 discovered_routers = auto_discover_routers(app)
+
+
+@app.exception_handler(GitHubAPIError)
+async def github_api_error_handler(
+    request: Request, exc: GitHubAPIError
+) -> JSONResponse:
+    """Handle normalized GitHub API errors with standard ErrorEnvelope."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=exc.to_dict(),
+    )
 
 
 @app.exception_handler(Exception)

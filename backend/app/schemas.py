@@ -401,9 +401,18 @@ class Repo(BaseModel):
     name: str
     default_branch: str = "main"
     html_url: str
+    head_sha: str | None = None
+    scope: ScopeInfo | None = None
     webhook_id: str | None = None
     webhook_status: WebhookStatus = WebhookStatus.none
     created_at: str | None = None
+
+
+class RepoConnectRequest(BaseModel):
+    """Payload to connect a GitHub repository."""
+
+    repo_url: str
+    branch: str | None = None
 
 
 class Analysis(BaseModel):
@@ -488,3 +497,13 @@ class Health(BaseModel):
     rate_remaining: int
     watcher: str
     next_poll_in_s: int
+
+
+class EvidenceFile(BaseModel):
+    """File content and range associated with an evidence citation."""
+
+    path: str
+    sha: str
+    content: str
+    line_start: int
+    line_end: int
