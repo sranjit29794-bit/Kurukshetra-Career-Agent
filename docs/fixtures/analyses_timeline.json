@@ -1,0 +1,141 @@
+[
+  {
+    "id": "analysis_c2",
+    "track_id": "track_demo",
+    "commit_sha": "c3d4e5f67890123456789abcdef0123456789012",
+    "commit_message": "feat(db): add sqlite database and tests",
+    "author": "Rohan <rohan@example.com>",
+    "date": "2026-10-16T12:15:00Z",
+    "trigger": "webhook",
+    "kind": "reassessment",
+    "status": "complete",
+    "files_changed_count": 3,
+    "skills_reassessed": ["SQL Database", "Testing", "REST APIs", "Python"],
+    "skills_unchanged": ["Deployment"],
+    "transitions": [
+      {
+        "skill": "SQL Database",
+        "before": "NOT_DEMONSTRATED",
+        "after": "DEMONSTRATED",
+        "change": "improved"
+      },
+      {
+        "skill": "Testing",
+        "before": "NOT_DEMONSTRATED",
+        "after": "PARTIAL",
+        "change": "improved"
+      },
+      {
+        "skill": "REST APIs",
+        "before": "DEMONSTRATED",
+        "after": "DEMONSTRATED",
+        "change": "unchanged"
+      },
+      {
+        "skill": "Python",
+        "before": "DEMONSTRATED",
+        "after": "DEMONSTRATED",
+        "change": "unchanged"
+      },
+      {
+        "skill": "Deployment",
+        "before": "NOT_DEMONSTRATED",
+        "after": "NOT_DEMONSTRATED",
+        "change": "unchanged"
+      }
+    ]
+  },
+  {
+    "id": "analysis_c1",
+    "track_id": "track_demo",
+    "commit_sha": "b2c3d4e5f67890123456789abcdef01234567890",
+    "commit_message": "docs: update README with API documentation",
+    "author": "Rohan <rohan@example.com>",
+    "date": "2026-10-16T12:10:00Z",
+    "trigger": "webhook",
+    "kind": "reassessment",
+    "status": "complete",
+    "files_changed_count": 1,
+    "skills_reassessed": [],
+    "skills_unchanged": ["REST APIs", "SQL Database", "Testing", "Deployment", "Python"],
+    "transitions": [
+      {
+        "skill": "REST APIs",
+        "before": "DEMONSTRATED",
+        "after": "DEMONSTRATED",
+        "change": "unchanged"
+      },
+      {
+        "skill": "SQL Database",
+        "before": "NOT_DEMONSTRATED",
+        "after": "NOT_DEMONSTRATED",
+        "change": "unchanged"
+      },
+      {
+        "skill": "Testing",
+        "before": "NOT_DEMONSTRATED",
+        "after": "NOT_DEMONSTRATED",
+        "change": "unchanged"
+      },
+      {
+        "skill": "Deployment",
+        "before": "NOT_DEMONSTRATED",
+        "after": "NOT_DEMONSTRATED",
+        "change": "unchanged"
+      },
+      {
+        "skill": "Python",
+        "before": "DEMONSTRATED",
+        "after": "DEMONSTRATED",
+        "change": "unchanged"
+      }
+    ],
+    "note": "Documentation changes only — no skills reassessed or upgraded per BRAIN §15.1"
+  },
+  {
+    "id": "analysis_c0",
+    "track_id": "track_demo",
+    "commit_sha": "a1b2c3d4e5f67890123456789abcdef012345678",
+    "commit_message": "Initial commit: FastAPI backend with in-memory store",
+    "author": "Rohan <rohan@example.com>",
+    "date": "2026-10-16T12:05:00Z",
+    "trigger": "manual",
+    "kind": "initial",
+    "status": "complete",
+    "files_changed_count": 4,
+    "skills_reassessed": ["REST APIs", "SQL Database", "Testing", "Deployment", "Python"],
+    "skills_unchanged": [],
+    "transitions": [
+      {
+        "skill": "REST APIs",
+        "before": "NOT_DEMONSTRATED",
+        "after": "DEMONSTRATED",
+        "change": "newly_assessed"
+      },
+      {
+        "skill": "SQL Database",
+        "before": "NOT_DEMONSTRATED",
+        "after": "NOT_DEMONSTRATED",
+        "change": "newly_assessed"
+      },
+      {
+        "skill": "Testing",
+        "before": "NOT_DEMONSTRATED",
+        "after": "NOT_DEMONSTRATED",
+        "change": "newly_assessed"
+      },
+      {
+        "skill": "Deployment",
+        "before": "NOT_DEMONSTRATED",
+        "after": "NOT_DEMONSTRATED",
+        "change": "newly_assessed"
+      },
+      {
+        "skill": "Python",
+        "before": "NOT_DEMONSTRATED",
+        "after": "DEMONSTRATED",
+        "change": "newly_assessed"
+      }
+    ]
+  }
+]
