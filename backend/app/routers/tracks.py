@@ -6,7 +6,7 @@ Reference: docs/PLAN-5H.md (§4 BE lane, Phase BE-1).
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
@@ -16,7 +16,14 @@ from backend.app.agents.repo_scout import RepoScout
 from backend.app.db import get_db
 from backend.app.events import emit
 from backend.app.github.client import GitHubAPIError
-from backend.app.models import JobModel, RepoModel, ResumeModel, TrackModel
+from backend.app.models import (
+    AnalysisModel,
+    ChangeSetModel,
+    JobModel,
+    RepoModel,
+    ResumeModel,
+    TrackModel,
+)
 from backend.app.schemas import Repo, Track, TrackCreate, WatcherMode
 
 router = APIRouter(prefix="/api/tracks", tags=["Tracks"])
@@ -261,4 +268,44 @@ async def check_now(id: str, db: Annotated[Session, Depends(get_db)]) -> dict[st
         "track_id": t.id,
         "sha": latest_sha,
         "analysis_id": analysis.id,
+    }
+
+
+@router.get("/{id}/diff")
+async def get_track_diff(
+    id: str,
+    db: Annotated[Session, Depends(get_db)],
+) -> dict[str, Any]:
+    """Retrieve the latest diff/changeset for a track."""
+    t = db.query(TrackModel).filter(TrackModel.id == id).first()
+    if not t:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "TRACK_NOT_FOUND",
+                    "message": f"Track '{id}' not found",
+                    "retryable": False,
+                }
+            },
+        )  # type: ignore[return-value]
+
+    change_set = (
+        db.query(ChangeSetModel)
+        .join(AnalysisModel, ChangeSetModel.analysis_id == AnalysisModel.id)
+        .filter(AnalysisModel.track_id == id)
+        .order_by(AnalysisModel.started_at.desc())
+        .first()
+    )
+
+    if change_set and change_set.impact_plan:
+        return change_set.impact_plan
+
+    # If no changeset yet, return a clean empty diff payload
+    return {
+        "from_sha": t.last_seen_sha or "",
+        "to_sha": t.last_seen_sha or "",
+        "commit_message": "No reassessments recorded yet",
+        "files_changed": [],
+        "items": [],
     }

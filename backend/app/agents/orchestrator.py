@@ -121,13 +121,13 @@ class Orchestrator:
 
             for req in requirements:
                 signals = self._run_detectors_for_req(req, file_contents)
-                status, strength, limitations = decide(signals, req.taxonomy_key)
+                status, strength, ignored_signals = decide(signals, req.taxonomy_key)
 
                 explanation = generate_deterministic_explanation(
                     status, req.name, signals
                 )
                 next_steps = generate_deterministic_next_steps(status, req.taxonomy_key)
-                all_lims = limitations + generate_deterministic_limitations(
+                deterministic_lims = generate_deterministic_limitations(
                     status, req.taxonomy_key, signals
                 )
 
@@ -138,11 +138,13 @@ class Orchestrator:
                     status=status.value,
                     strength=strength.value,
                     summary=explanation,
-                    limitation="; ".join(all_lims) if all_lims else "None noted.",
+                    limitation="; ".join(deterministic_lims)
+                    if deterministic_lims
+                    else "None noted.",
                     next_step="; ".join(next_steps) if next_steps else "None",
                     carried_forward=False,
                     reassessed=True,
-                    ignored_signals=[s.model_dump() for s in signals if not s.counted],
+                    ignored_signals=ignored_signals,
                     ai_used=False,
                 )
                 db.add(asmt)
@@ -324,12 +326,15 @@ class Orchestrator:
             if should_reassess:
                 reassessed_req_ids.add(req.id)
                 signals = self._run_detectors_for_req(req, file_contents)
-                status, strength, limitations = decide(signals, req.taxonomy_key)
+                status, strength, ignored_signals = decide(signals, req.taxonomy_key)
 
                 explanation = generate_deterministic_explanation(
                     status, req.name, signals
                 )
                 next_steps = generate_deterministic_next_steps(status, req.taxonomy_key)
+                deterministic_lims = generate_deterministic_limitations(
+                    status, req.taxonomy_key, signals
+                )
 
                 asmt = AssessmentModel(
                     id=f"asmt_{uuid.uuid4().hex[:12]}",
@@ -338,11 +343,13 @@ class Orchestrator:
                     status=status.value,
                     strength=strength.value,
                     summary=explanation,
-                    limitation="; ".join(limitations) if limitations else "None noted.",
+                    limitation="; ".join(deterministic_lims)
+                    if deterministic_lims
+                    else "None noted.",
                     next_step="; ".join(next_steps) if next_steps else "None",
                     carried_forward=False,
                     reassessed=True,
-                    ignored_signals=[s.model_dump() for s in signals if not s.counted],
+                    ignored_signals=ignored_signals,
                     ai_used=False,
                 )
                 db.add(asmt)
