@@ -8,7 +8,6 @@ import {
   Clock,
   Layers,
   ChevronRight,
-  TrendingUp,
   Briefcase,
   GitBranch,
   CheckCircle2,
@@ -24,6 +23,8 @@ import { UpdatedChip } from './UpdatedChip';
 import { ShaChip } from './ShaChip';
 import { AgentRow } from './AgentRow';
 import { LiveChip } from './LiveChip';
+import { ChangeDetectionCard } from './ChangeDetectionCard';
+import { useSSE } from '../hooks/useSSE';
 import { api } from '../lib/api';
 
 interface DashboardProps {
@@ -33,22 +34,40 @@ interface DashboardProps {
   onAddJob: () => void;
   onSelectTrack: (trackId: string, reqId?: string) => void;
   onNavigateActivity?: () => void;
+  onNavigateCompare?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
   opportunities,
-  recentChanges,
+  recentChanges: _recentChanges,
   nextActions,
   onAddJob,
   onSelectTrack,
   onNavigateActivity,
+  onNavigateCompare,
 }) => {
   // State toggles for testing loading, empty, and error states
   const [viewState, setViewState] = useState<'normal' | 'loading' | 'empty' | 'error'>('normal');
   const [isCheckingCommits, setIsCheckingCommits] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [currentCommitMode, setCurrentCommitMode] = useState<'c2' | 'c0' | 'c1'>('c2');
 
   const activeOpportunity = opportunities[0];
+
+  // SSE hook with live push simulation engine (§19.2)
+  const sse = useSSE({
+    trackId: activeOpportunity?.id || 'track_demo',
+    fixtureMode: true,
+    onAnalysisComplete: (sha) => {
+      if (sha.startsWith('c3d4e5f')) {
+        setCurrentCommitMode('c2');
+      } else if (sha.startsWith('b2c3d4e')) {
+        setCurrentCommitMode('c1');
+      }
+    },
+  });
+
+  const displayToast = sse.toastMessage || toastMessage;
 
   const handleCheckCommits = async () => {
     setIsCheckingCommits(true);
@@ -88,18 +107,30 @@ export const Dashboard: React.FC<DashboardProps> = ({
     {
       id: 'req_sql_database',
       name: 'SQL',
-      status: 'DEMONSTRATED' as const,
-      location: 'Found in app/db.py (lines 12-30)',
-      changeType: 'files' as const,
-      changeCount: 1,
+      status:
+        currentCommitMode === 'c0' || currentCommitMode === 'c1'
+          ? ('NOT_DEMONSTRATED' as const)
+          : ('DEMONSTRATED' as const),
+      location:
+        currentCommitMode === 'c0' || currentCommitMode === 'c1'
+          ? 'Not found in analyzed scope'
+          : 'Found in app/db.py (lines 12-30)',
+      changeType: currentCommitMode === 'c2' ? ('files' as const) : ('not_reassessed' as const),
+      changeCount: currentCommitMode === 'c2' ? 1 : undefined,
     },
     {
       id: 'req_testing',
       name: 'Testing',
-      status: 'PARTIAL' as const,
-      location: 'Found in tests/test_db.py (lines 8-24)',
-      changeType: 'files' as const,
-      changeCount: 1,
+      status:
+        currentCommitMode === 'c0' || currentCommitMode === 'c1'
+          ? ('NOT_DEMONSTRATED' as const)
+          : ('PARTIAL' as const),
+      location:
+        currentCommitMode === 'c0' || currentCommitMode === 'c1'
+          ? 'Not found in analyzed scope'
+          : 'Found in tests/test_db.py (lines 8-24)',
+      changeType: currentCommitMode === 'c2' ? ('files' as const) : ('not_reassessed' as const),
+      changeCount: currentCommitMode === 'c2' ? 1 : undefined,
     },
     {
       id: 'req_deployment',
@@ -119,7 +150,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // If there are real opportunity assessments, map them; otherwise use canonical set
   const skillsToDisplay =
-    activeOpportunity?.job?.requirements?.length === 6
+    currentCommitMode === 'c2' && activeOpportunity?.job?.requirements?.length === 6
       ? activeOpportunity.job.requirements.map((req) => {
           const asmt = activeOpportunity.assessments.find((a) => a.requirement_id === req.id);
           const ev = asmt?.evidence?.[0];
@@ -156,7 +187,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '32px 28px', position: 'relative' }}>
       {/* Toast Notification */}
-      {toastMessage && (
+      {displayToast && (
         <div
           style={{
             position: 'fixed',
@@ -177,9 +208,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
           }}
         >
           <CheckCircle2 size={16} style={{ color: '#34D399', flexShrink: 0 }} />
-          <span>{toastMessage}</span>
+          <span>{displayToast}</span>
           <button
-            onClick={() => setToastMessage(null)}
+            onClick={() => {
+              setToastMessage(null);
+              sse.clearToast();
+            }}
             style={{
               background: 'none',
               border: 'none',
@@ -222,8 +256,78 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </p>
         </div>
 
-        {/* State Switcher & Action Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Rehearsal Demo Buttons (§19.2) & Action Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {/* Live Push Rehearsal (C2) */}
+          <button
+            onClick={() => {
+              setCurrentCommitMode('c0');
+              sse.simulateLivePush('c2');
+            }}
+            disabled={sse.isReassessing}
+            style={{
+              backgroundColor: 'rgba(47, 109, 246, 0.15)',
+              border: '1px solid #2F6DF6',
+              color: '#60A5FA',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: sse.isReassessing ? 'not-allowed' : 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease',
+            }}
+            title="Simulate live push C2: adds database and tests, reassessing 4 skills"
+          >
+            <Sparkles size={13} style={{ color: '#60A5FA' }} />
+            <span>Simulate Push (C2)</span>
+          </button>
+
+          {/* Live Push Rehearsal (C1 Docs Only) */}
+          <button
+            onClick={() => {
+              sse.simulateLivePush('c1');
+              setCurrentCommitMode('c1');
+            }}
+            disabled={sse.isReassessing}
+            style={{
+              backgroundColor: 'var(--surface-2, #101A30)',
+              border: '1px solid var(--border, #1A2748)',
+              color: 'var(--muted, #8C9AB8)',
+              borderRadius: '8px',
+              padding: '6px 10px',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: sse.isReassessing ? 'not-allowed' : 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+            }}
+            title="Simulate push C1: docs only, no skill upgrade"
+          >
+            <span>Push C1 (Docs Only)</span>
+          </button>
+
+          {/* Reset Baseline (C0) */}
+          <button
+            onClick={() => setCurrentCommitMode('c0')}
+            style={{
+              backgroundColor: currentCommitMode === 'c0' ? 'rgba(148, 163, 184, 0.2)' : 'transparent',
+              border: '1px solid var(--border, #1A2748)',
+              color: 'var(--muted, #8C9AB8)',
+              borderRadius: '8px',
+              padding: '6px 10px',
+              fontSize: '11px',
+              cursor: 'pointer',
+            }}
+            title="Reset to baseline C0 (Not Demonstrated for SQL & Testing)"
+          >
+            Reset C0
+          </button>
+
+          {/* State Switcher */}
           <div
             style={{
               display: 'flex',
@@ -501,80 +605,106 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
               {/* Skill list rows */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {skillsToDisplay.map((skill, idx) => (
-                  <div
-                    key={skill.name || idx}
-                    onClick={() => activeOpportunity && onSelectTrack(activeOpportunity.id, skill.id)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '14px',
-                      padding: '12px 14px',
-                      borderRadius: '10px',
-                      backgroundColor: 'transparent',
-                      border: '1px solid transparent',
-                      cursor: 'pointer',
-                      transition: 'background-color 0.15s ease, border-color 0.15s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--surface-2, #101A30)';
-                      e.currentTarget.style.borderColor = 'var(--border, #1A2748)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.borderColor = 'transparent';
-                    }}
-                  >
-                    {/* Skill Lucide Tile */}
-                    <SkillIconTile skill={skill.name} size="md" />
+                {skillsToDisplay.map((skill, idx) => {
+                  const isReassessing = sse.reassessingSkills.includes(skill.id);
+                  const isRecentlyUpdated = sse.recentlyUpdatedSkills.includes(skill.id);
 
-                    {/* Skill Name */}
-                    <span
-                      style={{
-                        fontSize: '13.5px',
-                        fontWeight: 600,
-                        color: 'var(--text, #E8EEF9)',
-                        width: '170px',
-                        flexShrink: 0,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
-                      {skill.name}
-                    </span>
-
-                    {/* Status Pill */}
-                    <div style={{ width: '160px', flexShrink: 0 }}>
-                      <StatusPill status={skill.status} size="sm" />
-                    </div>
-
-                    {/* Location / Evidence description */}
+                  return (
                     <div
+                      key={skill.name || idx}
+                      onClick={() => activeOpportunity && onSelectTrack(activeOpportunity.id, skill.id)}
+                      className={isRecentlyUpdated ? 'highlight-reassessed flip-card' : ''}
                       style={{
-                        flex: 1,
-                        fontSize: '12px',
-                        color: 'var(--muted, #8C9AB8)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '14px',
+                        padding: '12px 14px',
+                        borderRadius: '10px',
+                        backgroundColor: 'transparent',
+                        border: '1px solid transparent',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.15s ease, border-color 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--surface-2, #101A30)';
+                        e.currentTarget.style.borderColor = 'var(--border, #1A2748)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.borderColor = 'transparent';
                       }}
                     >
-                      {skill.location}
-                    </div>
+                      {/* Skill Lucide Tile */}
+                      <SkillIconTile skill={skill.name} size="md" />
 
-                    {/* Updated Chip */}
-                    <div style={{ flexShrink: 0 }}>
-                      <UpdatedChip
-                        type={skill.changeType}
-                        count={skill.changeCount}
-                        size="sm"
-                      />
-                    </div>
+                      {/* Skill Name */}
+                      <span
+                        style={{
+                          fontSize: '13.5px',
+                          fontWeight: 600,
+                          color: 'var(--text, #E8EEF9)',
+                          width: '170px',
+                          flexShrink: 0,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {skill.name}
+                      </span>
 
-                    <ChevronRight size={14} style={{ color: 'var(--muted, #8C9AB8)', flexShrink: 0 }} />
-                  </div>
-                ))}
+                      {/* Status Pill or Reassessing Chip */}
+                      <div style={{ width: '160px', flexShrink: 0 }}>
+                        {isReassessing ? (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              backgroundColor: 'rgba(47, 109, 246, 0.15)',
+                              border: '1px solid #2F6DF6',
+                              color: '#60A5FA',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                            }}
+                          >
+                            <RefreshCw size={11} className="spin-icon" />
+                            <span>Reassessing…</span>
+                          </span>
+                        ) : (
+                          <StatusPill status={skill.status} size="sm" />
+                        )}
+                      </div>
+
+                      {/* Location / Evidence description */}
+                      <div
+                        style={{
+                          flex: 1,
+                          fontSize: '12px',
+                          color: 'var(--muted, #8C9AB8)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {skill.location}
+                      </div>
+
+                      {/* Updated Chip */}
+                      <div style={{ flexShrink: 0 }}>
+                        <UpdatedChip
+                          type={skill.changeType}
+                          count={skill.changeCount}
+                          size="sm"
+                        />
+                      </div>
+
+                      <ChevronRight size={14} style={{ color: 'var(--muted, #8C9AB8)', flexShrink: 0 }} />
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -788,71 +918,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           {/* Recent Repository Changes & Next Actions */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '20px' }}>
-            {/* Recent Changes Box */}
-            <div className="reference-card" style={{ padding: '20px 22px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                <TrendingUp size={16} style={{ color: 'var(--primary, #2F6DF6)' }} />
-                <h3 style={{ margin: 0, fontSize: '14.5px', fontWeight: 700, color: 'var(--text, #E8EEF9)' }}>
-                  Recent Repository Changes (Push Detected)
-                </h3>
-              </div>
-
-              {recentChanges.map((change) => (
-                <div
-                  key={change.id}
-                  style={{
-                    backgroundColor: 'var(--surface-2, #101A30)',
-                    border: '1px solid var(--border, #1A2748)',
-                    borderRadius: '10px',
-                    padding: '14px 16px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <span style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--text, #E8EEF9)' }}>
-                        {change.commit_message}
-                      </span>
-                      <div style={{ color: 'var(--muted, #8C9AB8)', fontSize: '12px', marginTop: '2px' }}>
-                        by {change.author} • {change.timestamp}
-                      </div>
-                    </div>
-                    <ShaChip sha={change.commit_sha} size="sm" />
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {change.transitions.map((t, idx) => (
-                      <div
-                        key={idx}
-                        style={{
-                          fontSize: '12px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '3px 8px',
-                          borderRadius: '6px',
-                          backgroundColor:
-                            t.change === 'improved' ? 'rgba(52, 211, 153, 0.12)' : 'var(--surface-2, #101A30)',
-                          border: `1px solid ${
-                            t.change === 'improved' ? 'rgba(52, 211, 153, 0.3)' : 'var(--border, #1A2748)'
-                          }`,
-                          color: t.change === 'improved' ? '#34D399' : 'var(--muted, #8C9AB8)',
-                          fontWeight: t.change === 'improved' ? 600 : 500,
-                        }}
-                      >
-                        <span>{t.skill}:</span>
-                        <span>
-                          {t.before === 'NOT_DEMONSTRATED' ? '○' : '◐'} → {t.after === 'DEMONSTRATED' ? '✓' : '◐'}
-                        </span>
-                        {t.change === 'improved' && <span>(Improved)</span>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+            {/* Change Detection & Reassessment Card (matching reference.png bottom-right panel) */}
+            <ChangeDetectionCard
+              sha={currentCommitMode === 'c1' ? 'b2c3d4e5f67890123456789abcdef01234567890' : 'c3d4e5f67890123456789abcdef0123456789012'}
+              relativeTime={currentCommitMode === 'c1' ? 'Just now via push' : '2 hours ago'}
+              isDocsOnly={currentCommitMode === 'c1'}
+              onViewReport={onNavigateCompare}
+            />
 
             {/* Recommended Next Actions Box */}
             <div className="reference-card" style={{ padding: '20px 22px' }}>

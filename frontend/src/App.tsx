@@ -202,6 +202,7 @@ export default function App() {
           navigate(`/tracks/${id}/skills/${reqId || 'req_sql_database'}`);
         }}
         onNavigateActivity={() => navigate('/activity')}
+        onNavigateCompare={() => navigate('/changes')}
       />
     );
   };

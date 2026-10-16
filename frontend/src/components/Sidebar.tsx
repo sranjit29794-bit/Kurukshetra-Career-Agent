@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   Home,
   CheckCircle,
@@ -8,6 +7,7 @@ import {
   Settings,
   Zap,
   Code2,
+  GitCommit,
 } from 'lucide-react';
 
 export interface SidebarProps {
@@ -24,6 +24,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navItems = [
     { label: 'Home', path: '/', icon: Home },
     { label: 'Assessments', path: `/tracks/${trackId}`, icon: CheckCircle },
+    { label: 'Changes & Diff', path: '/changes', icon: GitCommit },
     { label: 'Jobs', path: '/add-job', icon: Briefcase },
     { label: 'GitHub', path: '/repositories', icon: GitBranch },
     { label: 'Agent Activity', path: '/activity', icon: Sparkles },

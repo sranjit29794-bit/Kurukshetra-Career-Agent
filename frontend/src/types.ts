@@ -145,3 +145,14 @@ export interface NextAction {
   priority: Priority;
   target_file?: string;
 }
+
+export interface AgentEvent {
+  id: number | string;
+  track_id?: string;
+  analysis_id?: string;
+  agent: string;
+  level: 'info' | 'warn' | 'error';
+  message: string;
+  ts?: string;
+  created_at?: string;
+}
