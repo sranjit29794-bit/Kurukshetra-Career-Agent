@@ -1,109 +1,68 @@
-# DevProof Design System Master File (V2)
+# DevProof Design System Master File (Student-First Edition)
 
-**Product:** DevProof — Evidence-backed AI Career Coach  
-**Architecture Direction:** Evidence Intelligence Platform  
-**Design Workflow:** UI/UX Pro Max Skill Integration  
-**Updated:** Phase 4 + Approved Early Product Redesign  
+**Product:** DevProof — Student-First Career Intelligence Platform  
+**Target Audience:** Students & Early-Career Developers Applying for Internships & Jobs  
+**Phase Target:** Phase 5 Unified MVP & Demo Reliability Gate  
+**Design Workflow:** UI/UX Pro Max Skill (`ui-ux-pro-max`)  
 
 ---
 
 ## 1. Product Design Direction
 
-DevProof is a high-trust developer intelligence console. It proves student developer capabilities by inspecting real Git commits, verifying line citations with AST detectors and a Skeptic Verifier, and tracking changes automatically through webhooks and polling.
+DevProof is designed specifically for college students and junior developers. Rather than feeling like a gloomy security terminal, hacker dashboard, or generic AI template, it presents an editorial, high-trust, welcoming career intelligence platform.
 
-To avoid dreary, pitch-black interfaces while maintaining technical credibility:
-- **Dual Mode:** 
-  - **Cyber Intelligence (Dark):** Deep navy `#080c14`, elevated surfaces `#0f172a`, vibrant cyan `#06b6d4`, verified emerald `#10b981`, warning amber `#f59e0b`, failure rose `#f43f5e`.
-  - **Luminous Engineer (Light):** Crisp snow `#f8fafc`, pure white card surfaces `#ffffff`, subtle slate borders `#cbd5e1`, deep slate text `#0f172a`, ocean cyan `#0284c7`, rich emerald `#059669`.
-- **Aesthetic Principles:**
-  - Glassmorphic backdrops (`backdrop-blur-md`) with high contrast text.
-  - Interactive 3D Perspective Pipeline cards illustrating the verified evidence flow.
-  - No emojis as primary structural icons — clean SVG vector icons throughout.
-  - Purposeful micro-animations: 180ms hover lifts, 300ms route transitions, pulsing live watcher beacons.
-  - Honest status and rate-limit recovery guidance: never display fake progress, stale sample data on error, or hidden secrets.
+### Core Visual Principles
+- **Student-First Warmth:** Default clean luminous palette with warm off-white canvas (`#f8fafc`), clean pure-white surfaces (`#ffffff`), and deep ink/navy typography (`#0f172a`).
+- **Trust Indigo & Fresh Mint:** Confident Indigo primary action color (`#4f46e5`), fresh Mint/Emerald for verified code proof (`#059669`), warm amber for partial/learning gaps (`#d97706`), and clear rose only for genuine errors (`#e11d48`).
+- **Interactive 3D Pipeline & Purposeful Motion:** Interactive perspective stages explaining the AST parsing and skeptic verification pipeline without overwhelming the user or slowing the interface.
+- **Night-Study Mode Support:** Dedicated dark mode toggle for late-night student study sessions (`#0b1120`).
 
 ---
 
 ## 2. Typography
 
-- **Heading Font:** `JetBrains Mono, monospace` (Technical, precise, code-aligned)
-- **Body Font:** `IBM Plex Sans, Inter, system-ui, sans-serif` (High legibility, balanced geometry)
-- **Code & Citations:** `JetBrains Mono` for file paths, line ranges, Git SHAs, and AST code blocks.
+- **Heading & UI Sans:** `Plus Jakarta Sans` / `Inter` (Friendly, modern, geometric clarity)
+- **Technical & Code:** `JetBrains Mono` for commit SHAs, file paths, line ranges, and verified code snippets.
 
 Google Fonts import:
 ```css
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 ```
 
 ---
 
 ## 3. Color Tokens & Semantic Status Colors
 
-| Role | Cyber Dark | Luminous Light | CSS Variable |
-|------|------------|----------------|--------------|
-| Canvas Background | `#080c14` | `#f8fafc` | `--bg-app` |
-| Surface (Cards) | `#0f172a` | `#ffffff` | `--bg-surface` |
-| Elevated Surface | `#1e293b` | `#f1f5f9` | `--bg-surface-elevated` |
-| Card Border | `#334155` | `#cbd5e1` | `--border-card` |
-| Primary Text | `#f8fafc` | `#0f172a` | `--text-main` |
-| Muted Text | `#94a3b8` | `#475569` | `--text-muted` |
-| Accent Cyan | `#06b6d4` | `#0284c7` | `--accent-cyan` |
-| Verified (DEMONSTRATED) | `#10b981` | `#059669` | `--accent-emerald` |
-| Partial (PARTIAL) | `#f59e0b` | `#d97706` | `--accent-amber` |
-| Not Demonstrated | `#94a3b8` | `#64748b` | `--text-dim` |
-| Unable to Assess | `#8b5cf6` | `#7c3aed` | `--accent-violet` |
-| Error / Failure | `#f43f5e` | `#e11d48` | `--accent-rose` |
+| Role | Light (Default) | Dark (Night Study) | CSS Variable |
+|---|---|---|---|
+| Page Canvas | `#f8fafc` (Warm Slate) | `#0b1120` | `--bg-app` |
+| Primary Surface | `#ffffff` | `#111827` | `--bg-surface` |
+| Elevated Surface | `#f1f5f9` | `#1f2937` | `--bg-surface-elevated` |
+| Primary Action | `#4f46e5` (Trust Indigo) | `#6366f1` | `--accent-primary` |
+| Verified (DEMONSTRATED) | `#059669` (Fresh Mint) | `#10b981` | `--accent-verified` |
+| Verified Pill Background | `#ecfdf5` | `rgba(16,185,129,0.1)` | `--accent-verified-bg` |
+| Partial Result | `#d97706` (Warm Amber) | `#f59e0b` | `--accent-partial` |
+| Partial Pill Background | `#fffbeb` | `rgba(245,158,11,0.1)` | `--accent-partial-bg` |
+| Not Demonstrated / Gap | `#64748b` (Slate Neutral) | `#6b7280` | `--text-dim` |
+| Error / Failure | `#e11d48` (Rose) | `#f43f5e` | `--accent-rose` |
 
 ---
 
-## 4. Spacing, Radius & Elevation
+## 4. Multi-Page Student Experience
 
-- **Spacing Scale:**
-  - Micro: `4px`, `8px`
-  - Compact: `12px`, `16px`
-  - Structural: `24px`, `32px`, `48px`
-- **Border Radius:**
-  - Badges / Small Buttons: `6px` (`--radius-sm`)
-  - Cards & Inputs: `10px` (`--radius-md`)
-  - Modals & Hero Containers: `16px` (`--radius-lg`)
-- **Shadows:**
-  - Lift: `0 4px 12px rgba(0,0,0,0.2)`
-  - Active Glow: `0 0 20px var(--accent-cyan-glow)`
+1. **Student Console (`/` or `/dashboard`)**: Personal launchpad showing active career tracks, repo freshness, interactive verification pipeline diagram, and quick onboarding.
+2. **Career Track Setup (`/track`)**: Low-friction 3-step staged workflow with demo job presets, editable extracted requirements, repository connector with live pinned SHA, and dedicated rate-limit recovery.
+3. **Career Track Detail (`/tracks/:id`)**: Role requirements, repository metadata, "Run Assessment" action, manual commit checker, scorecards, and tabbed evidence explorer.
+4. **Skill Evidence Explorer**: Line-by-line Skeptic-verified code citations with syntax highlighting and explicit caveats that missing evidence in repo is never proof of missing student skill.
+5. **Before & After Reassessment Diff (`/diff/:id`)**: Clear commit delta comparison (`from_sha` ➔ `to_sha`), changed files list, and skill progression deltas (`IMPROVED`, `UNCHANGED`).
+6. **Repository Sentinel (`/repo-monitor`)**: Live repository watcher inspection, bounded file scope tree, and push activity logs.
+7. **Settings & Integrations (`/settings`)**: Webhook setup instructions (HMAC SHA-256), polling status, and server-side token setup guidance.
 
 ---
 
-## 5. Multi-Page Architecture & Navigation
+## 5. Rate-Limit Handling & Trust Guarantees
 
-1. **Console / Dashboard (`/` or `/dashboard`)**: Overview of active career tracks, watcher engine state, interactive 3D verification pipeline, live activity feed, and primary "+ New Track" action.
-2. **New Track / Job Setup (`/track`)**: 3-step staged workflow preserving all user inputs:
-   - Step 1: Ingest Job Source (URL or raw text)
-   - Step 2: Review & Edit Requirements (editable tags, priorities, custom additions)
-   - Step 3: Link GitHub Repository & Pin Commit SHA
-   - Confirm & Persist Track
-3. **Track Detail / Career Track (`/tracks/:id`)**: Comprehensive track view, pinned SHA freshness, "Run Assessment" action, "Check for New Commits" action, and evidence explorer.
-4. **Assessment / Evidence Explorer**: Requirement status badges, AST detector identifiers, immutable commit citations, expandable source code view.
-5. **Change Monitor / Sentinel (`/repo-monitor`)**: Live repository watcher status, polling interval, webhook delivery log, bounded tree scope inspector.
-6. **Diff & History (`/diff/:id`)**: Before-and-after commit comparison, changed files list, reassessed vs carried-forward requirements.
-7. **Settings / Integrations (`/settings`)**: Honest webhook configuration instructions, server `GITHUB_TOKEN` setup guide, health diagnostics.
-
----
-
-## 6. Rate-Limit Recovery & Error Design
-
-When GitHub API rate limits occur:
-1. Explain concisely that GitHub's unauthenticated allowance (60 req/hr) is exhausted.
-2. Display formatted reset time based on `reset_epoch`.
-3. Provide retry button with rate-limit cooldown.
-4. Provide clear instructions for configuring `GITHUB_TOKEN` in the server `.env` file for 5,000 req/hr.
-5. Never request tokens from the user via frontend fields.
-6. Preserve all user input in the form.
-
----
-
-## 7. Motion & Accessibility
-
-- CSS transitions: `180ms cubic-bezier(0.16, 1, 0.3, 1)` for hover and focus states.
-- Route transition: `@keyframes fadeIn 0.3s ease-out`.
-- Reduced Motion: `@media (prefers-reduced-motion: reduce)` disables non-essential animations.
-- Minimum tap target: 44px on interactive controls.
-- Contrast ratio: Minimum 4.5:1 for body text against surfaces.
+- When GitHub unauthenticated limits (60 req/hr) are reached, the UI presents an informative recovery card with the exact formatted reset time.
+- All entered form state (job description text, extracted requirements, repo URL) is retained across failures.
+- Server-side GitHub token configuration is clearly explained; users are never asked to enter raw tokens in frontend forms.
+- Stale fixture data is never displayed as live when a request fails.

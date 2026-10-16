@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     POLL_INTERVAL_S: int = 20
     MAX_FILES_ANALYZED: int = 150
     MAX_FILE_BYTES: int = 100000
-    CORS_ORIGINS: str = "http://localhost:5173"
+    CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     model_config = SettingsConfigDict(
         env_file=".env",

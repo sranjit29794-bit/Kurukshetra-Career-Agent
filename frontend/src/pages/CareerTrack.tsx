@@ -9,8 +9,7 @@ import type {
   RequirementDraft,
   TrackDetail,
 } from '../types/contract';
-
-const API_BASE = 'http://localhost:8000';
+import { API_BASE } from '../api/config';
 
 interface CareerTrackProps {
   onNavigate?: (route: string) => void;
@@ -242,7 +241,7 @@ export const CareerTrack: React.FC<CareerTrackProps> = ({ onNavigate }) => {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
           gap: '12px',
           marginBottom: '32px',
         }}
@@ -309,6 +308,7 @@ export const CareerTrack: React.FC<CareerTrackProps> = ({ onNavigate }) => {
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 type="button"
+                data-testid="input-mode-text"
                 onClick={() => setInputMode('text')}
                 style={{
                   backgroundColor: inputMode === 'text' ? 'var(--bg-surface-elevated)' : 'transparent',
@@ -324,6 +324,7 @@ export const CareerTrack: React.FC<CareerTrackProps> = ({ onNavigate }) => {
               </button>
               <button
                 type="button"
+                data-testid="input-mode-url"
                 onClick={() => setInputMode('url')}
                 style={{
                   backgroundColor: inputMode === 'url' ? 'var(--bg-surface-elevated)' : 'transparent',
@@ -397,6 +398,7 @@ export const CareerTrack: React.FC<CareerTrackProps> = ({ onNavigate }) => {
 
             <button
               type="submit"
+              data-testid="parse-requirements-btn"
               disabled={extractLoading || (inputMode === 'url' ? !jobUrl.trim() : !jobText.trim())}
               style={{
                 backgroundColor: 'var(--accent-cyan)',

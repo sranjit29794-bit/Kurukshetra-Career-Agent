@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { HealthResponse } from '../types/contract';
+import { API_BASE } from '../api/config';
 
 interface SettingsProps {
   onNavigate: (route: string) => void;
@@ -9,7 +10,7 @@ export const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
   const [health, setHealth] = useState<HealthResponse | null>(null);
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/health')
+    fetch(`${API_BASE}/api/health`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => setHealth(data))
       .catch(() => {});

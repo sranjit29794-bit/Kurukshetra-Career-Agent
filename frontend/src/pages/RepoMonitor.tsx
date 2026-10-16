@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { RepoConnectResult } from '../types/contract';
 import repoConnectFixture from '../../../docs/fixtures/repo_connect.json';
 
-const API_BASE = 'http://localhost:8000';
+import { API_BASE } from '../api/config';
 
 interface ActivityLogItem {
   id: string;
@@ -272,7 +272,7 @@ export const RepoMonitor: React.FC<RepoMonitorProps> = () => {
         }}
       >
         <form onSubmit={handleConnect}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', alignItems: 'flex-end' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label htmlFor="repoUrlInput" style={{ color: '#e6edf3', fontSize: '13px', fontWeight: 600 }}>
                 Public GitHub Repository URL <span style={{ color: '#2dd4bf' }}>*</span>

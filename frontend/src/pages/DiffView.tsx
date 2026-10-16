@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { DiffResponse } from '../types/contract';
+import { API_BASE } from '../api/config';
 
 interface DiffViewProps {
   trackId: number;
@@ -12,7 +13,7 @@ export const DiffView: React.FC<DiffViewProps> = ({ trackId, onNavigate }) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`http://localhost:8000/api/tracks/${trackId}/diff`)
+    fetch(`${API_BASE}/api/tracks/${trackId}/diff`)
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch diff comparison');
         return res.json();

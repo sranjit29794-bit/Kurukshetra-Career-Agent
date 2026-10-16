@@ -245,8 +245,10 @@ def test_webhook_ignores_branch_deletion(client):
 
 
 def test_webhook_ignores_untracked_repo(client):
+    import uuid
     settings = get_settings()
     settings.GITHUB_WEBHOOK_SECRET = "change-me"
+    deliv_id = f"untracked-{uuid.uuid4().hex}"
     resp = client.post(
         "/api/webhooks/github",
         json={
@@ -254,7 +256,7 @@ def test_webhook_ignores_untracked_repo(client):
             "after": "abcdef1234567890abcdef1234567890abcdef12",
             "repository": {"owner": {"login": "unknown-user"}, "name": "unknown-repo"},
         },
-        headers={"X-GitHub-Event": "push", "X-GitHub-Delivery": "untracked-test-123"},
+        headers={"X-GitHub-Event": "push", "X-GitHub-Delivery": deliv_id},
     )
     assert resp.status_code == 200
     assert resp.json()["status"] == "ignored"

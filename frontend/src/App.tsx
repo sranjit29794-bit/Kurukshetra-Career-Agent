@@ -9,8 +9,8 @@ import { DevTools } from './pages/DevTools';
 
 export function App() {
   const [currentPath, setCurrentPath] = useState<string>(window.location.pathname);
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    return (localStorage.getItem('devproof_theme') as 'dark' | 'light') || 'dark';
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (localStorage.getItem('devproof_theme') as 'light' | 'dark') || 'light';
   });
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export function App() {
   };
 
   const toggleTheme = () => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
   };
 
   // Determine active view mode
@@ -67,7 +67,7 @@ export function App() {
       style={{
         backgroundColor: 'var(--bg-surface)',
         borderBottom: '1px solid var(--border-subtle)',
-        padding: '12px 28px',
+        padding: '14px 32px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -76,64 +76,63 @@ export function App() {
         position: 'sticky',
         top: 0,
         zIndex: 50,
-        backdropFilter: 'blur(10px)',
+        backdropFilter: 'blur(12px)',
         boxShadow: 'var(--shadow-sm)',
         transition: 'background-color 0.25s ease, border-color 0.25s ease',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
         {/* Brand Logo & Name */}
         <div
           onClick={() => navigate('/')}
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '10px',
+            gap: '12px',
             cursor: 'pointer',
             userSelect: 'none',
           }}
         >
           <div
             style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '8px',
-              background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-emerald))',
+              width: '36px',
+              height: '36px',
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, var(--accent-primary), #6366f1)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '16px',
-              color: '#080c14',
-              fontWeight: 900,
-              boxShadow: 'var(--shadow-glow)',
+              fontSize: '18px',
+              color: '#ffffff',
+              fontWeight: 800,
+              boxShadow: '0 4px 12px rgba(79, 70, 229, 0.28)',
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
             </svg>
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '17px', letterSpacing: '-0.02em', fontFamily: 'JetBrains Mono, monospace' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '18px', letterSpacing: '-0.02em', fontFamily: 'var(--font-sans)' }}>
                 DevProof
               </span>
               <span
                 style={{
-                  fontSize: '10px',
-                  backgroundColor: 'var(--accent-cyan-glow)',
-                  color: 'var(--accent-cyan)',
-                  padding: '2px 6px',
-                  borderRadius: '4px',
-                  border: '1px solid var(--accent-cyan)',
+                  fontSize: '11px',
+                  backgroundColor: 'var(--accent-verified-bg)',
+                  color: 'var(--accent-verified)',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
                   fontWeight: 700,
-                  letterSpacing: '0.04em',
+                  letterSpacing: '0.02em',
                 }}
               >
-                V2.0
+                STUDENT CAREER INTELLIGENCE
               </span>
             </div>
-            <div style={{ fontSize: '10px', color: 'var(--text-dim)', letterSpacing: '0.02em' }}>
-              Evidence Intelligence
+            <div style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 500 }}>
+              Evidence-Backed Internship & Job Readiness
             </div>
           </div>
         </div>
@@ -145,27 +144,27 @@ export function App() {
             <span
               onClick={() => navigate(`/tracks/${currentId}`)}
               style={{
-                color: activeMode === 'track_detail' ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                color: activeMode === 'track_detail' ? 'var(--accent-primary)' : 'var(--text-muted)',
                 cursor: 'pointer',
                 fontWeight: 600,
               }}
             >
-              Track #{currentId}
+              Career Track #{currentId}
             </span>
             {activeMode === 'diff' && (
               <>
                 <span>/</span>
-                <span style={{ color: 'var(--accent-emerald)', fontWeight: 600 }}>Diff Engine</span>
+                <span style={{ color: 'var(--accent-verified)', fontWeight: 600 }}>Diff Engine</span>
               </>
             )}
           </div>
         )}
 
         {/* Primary Route Tabs */}
-        <div style={{ display: 'flex', gap: '6px', marginLeft: '8px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '6px', marginLeft: '12px', flexWrap: 'wrap' }}>
           {[
-            { mode: 'dashboard', path: '/', label: 'Console', icon: '📊' },
-            { mode: 'track', path: '/track', label: 'New Track', icon: '🎯' },
+            { mode: 'dashboard', path: '/', label: 'Overview', icon: '🎓' },
+            { mode: 'track', path: '/track', label: 'Create Track', icon: '🎯' },
             { mode: 'repomonitor', path: '/repo-monitor', label: 'Repo Sentinel', icon: '🔍' },
             { mode: 'settings', path: '/settings', label: 'Integrations', icon: '⚙️' },
             { mode: 'devtools', path: '/devtools', label: 'DevTools', icon: '🛠️' },
@@ -176,13 +175,13 @@ export function App() {
                 key={item.mode}
                 onClick={() => navigate(item.path)}
                 style={{
-                  backgroundColor: isActive ? 'var(--bg-surface-elevated)' : 'transparent',
-                  color: isActive ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                  border: isActive ? '1px solid var(--accent-cyan)' : '1px solid transparent',
-                  padding: '6px 14px',
+                  backgroundColor: isActive ? 'var(--accent-primary-glow)' : 'transparent',
+                  color: isActive ? 'var(--accent-primary)' : 'var(--text-muted)',
+                  border: isActive ? '1px solid var(--border-highlight)' : '1px solid transparent',
+                  padding: '7px 16px',
                   borderRadius: 'var(--radius-sm)',
                   fontSize: '13px',
-                  fontWeight: isActive ? 700 : 500,
+                  fontWeight: isActive ? 700 : 600,
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
@@ -203,54 +202,56 @@ export function App() {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
+            gap: '8px',
             fontSize: '12px',
             color: 'var(--text-muted)',
             backgroundColor: 'var(--bg-surface-elevated)',
-            padding: '5px 10px',
+            padding: '6px 12px',
             borderRadius: 'var(--radius-sm)',
             border: '1px solid var(--border-subtle)',
           }}
         >
-          <span className="live-pulse" style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: 'var(--accent-emerald)', display: 'inline-block' }} />
-          <span>Polling Active (20s)</span>
+          <span className="live-pulse" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--accent-verified)', display: 'inline-block' }} />
+          <span style={{ fontWeight: 600 }}>Watcher Active (20s)</span>
         </div>
 
         {/* Theme Toggle Button */}
         <button
+          id="theme-toggle-btn"
+          aria-label="Toggle Night Study Theme"
           onClick={toggleTheme}
-          title={theme === 'dark' ? 'Switch to Luminous Light Mode' : 'Switch to Cyber Dark Mode'}
+          title={theme === 'light' ? 'Switch to Night-Study Dark Mode' : 'Switch to Student Luminous Light Mode'}
           style={{
             backgroundColor: 'var(--bg-surface-elevated)',
             border: '1px solid var(--border-card)',
             color: 'var(--text-main)',
-            width: '34px',
-            height: '34px',
+            width: '36px',
+            height: '36px',
             borderRadius: 'var(--radius-sm)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '15px',
+            fontSize: '16px',
           }}
         >
-          {theme === 'dark' ? '☀️' : '🌙'}
+          {theme === 'light' ? '🌙' : '☀️'}
         </button>
 
-        {/* Quick Launch CTA */}
+        {/* Primary CTA */}
         <button
           onClick={() => navigate('/track')}
           style={{
-            backgroundColor: 'var(--accent-cyan)',
-            color: '#080c14',
+            backgroundColor: 'var(--accent-primary)',
+            color: '#ffffff',
             border: 'none',
-            padding: '7px 16px',
+            padding: '8px 18px',
             borderRadius: 'var(--radius-sm)',
             fontSize: '13px',
             fontWeight: 700,
-            boxShadow: 'var(--shadow-glow)',
+            boxShadow: 'var(--shadow-sm)',
           }}
         >
-          + Track
+          + New Career Track
         </button>
       </div>
     </nav>
@@ -293,15 +294,15 @@ export function App() {
         <button
           onClick={() => navigate('/')}
           style={{
-            backgroundColor: 'var(--accent-cyan)',
-            color: '#080c14',
+            backgroundColor: 'var(--accent-primary)',
+            color: '#ffffff',
             border: 'none',
-            padding: '10px 20px',
+            padding: '10px 22px',
             borderRadius: 'var(--radius-sm)',
             fontWeight: 700,
           }}
         >
-          Return to Console
+          Return to Overview
         </button>
       </div>
     );

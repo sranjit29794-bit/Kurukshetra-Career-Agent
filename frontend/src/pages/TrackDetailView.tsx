@@ -4,6 +4,7 @@ import type {
   ErrorResponse,
   TrackDetail,
 } from '../types/contract';
+import { API_BASE } from '../api/config';
 
 interface TrackDetailViewProps {
   trackId: number;
@@ -28,44 +29,48 @@ export const TrackDetailView: React.FC<TrackDetailViewProps> = ({ trackId, onNav
   // Filter Tab
   const [activeTab, setActiveTab] = useState<'all' | 'demonstrated' | 'partial' | 'not_demonstrated'>('all');
 
-  const loadTrackData = React.useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [trackRes, historyRes] = await Promise.all([
-        fetch(`http://localhost:8000/api/tracks/${trackId}`),
-        fetch(`http://localhost:8000/api/tracks/${trackId}/history`),
-      ]);
-
-      if (!trackRes.ok) {
-        throw new Error(`Track #${trackId} not found`);
-      }
-
-      const trackData: TrackDetail = await trackRes.json();
-      setTrack(trackData);
-
-      if (historyRes.ok) {
-        const historyData: AnalysisDetail[] = await historyRes.json();
-        if (historyData.length > 0) {
-          setLatestAnalysis(historyData[0]);
-        }
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to load track data');
-    } finally {
-      setLoading(false);
-    }
-  }, [trackId]);
-
   useEffect(() => {
-    loadTrackData();
-  }, [loadTrackData]);
+    let isMounted = true;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [trackRes, historyRes] = await Promise.all([
+          fetch(`${API_BASE}/api/tracks/${trackId}`),
+          fetch(`${API_BASE}/api/tracks/${trackId}/history`),
+        ]);
+
+        if (!trackRes.ok) {
+          throw new Error(`Track #${trackId} not found`);
+        }
+
+        const trackData: TrackDetail = await trackRes.json();
+        if (!isMounted) return;
+        setTrack(trackData);
+
+        if (historyRes.ok) {
+          const historyData: AnalysisDetail[] = await historyRes.json();
+          if (historyData.length > 0 && isMounted) {
+            setLatestAnalysis(historyData[0]);
+          }
+        }
+      } catch (err: any) {
+        if (isMounted) setError(err.message || 'Failed to load track data');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [trackId]);
 
   const handleRunAssessment = async () => {
     setAnalysisLoading(true);
     setAnalysisError(null);
     try {
-      const res = await fetch(`http://localhost:8000/api/tracks/${trackId}/analyze`, {
+      const res = await fetch(`${API_BASE}/api/tracks/${trackId}/analyze`, {
         method: 'POST',
       });
       const data = await res.json();
@@ -81,17 +86,37 @@ export const TrackDetailView: React.FC<TrackDetailViewProps> = ({ trackId, onNav
     }
   };
 
+  const reloadTrackData = async () => {
+    try {
+      const [trackRes, historyRes] = await Promise.all([
+        fetch(`${API_BASE}/api/tracks/${trackId}`),
+        fetch(`${API_BASE}/api/tracks/${trackId}/history`),
+      ]);
+      if (trackRes.ok) {
+        setTrack(await trackRes.json());
+      }
+      if (historyRes.ok) {
+        const historyData: AnalysisDetail[] = await historyRes.json();
+        if (historyData.length > 0) {
+          setLatestAnalysis(historyData[0]);
+        }
+      }
+    } catch {
+      // Background reload failure ignored
+    }
+  };
+
   const handleManualCheck = async () => {
     setCheckLoading(true);
     setCheckMessage(null);
     try {
-      const res = await fetch(`http://localhost:8000/api/tracks/${trackId}/check`, {
+      const res = await fetch(`${API_BASE}/api/tracks/${trackId}/check`, {
         method: 'POST',
       });
       const data = await res.json();
       if (data.new_commit_detected) {
         setCheckMessage('✓ New commit detected! Targeted reassessment completed automatically.');
-        loadTrackData();
+        reloadTrackData();
       } else {
         setCheckMessage(`Repository is up to date (HEAD is ${data.current_sha?.slice(0, 8)}).`);
       }
@@ -500,6 +525,7 @@ export const TrackDetailView: React.FC<TrackDetailViewProps> = ({ trackId, onNav
 
                     {a.evidence && a.evidence.length > 0 && (
                       <button
+                        data-testid="toggle-evidence-btn"
                         onClick={() => toggleEvidence(assessmentKey)}
                         style={{
                           backgroundColor: 'var(--bg-surface)',
