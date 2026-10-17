@@ -23,16 +23,13 @@ export const RepositoriesView: React.FC<RepositoriesViewProps> = ({
   const [analyzing, setAnalyzing] = useState(false);
   const [progressStep, setProgressStep] = useState(3); // 1 to 4
 
-  const handleStartAnalysis = () => {
+  const handleStartAnalysis = async () => {
     setAnalyzing(true);
-    setProgressStep(1);
-    setTimeout(() => setProgressStep(2), 700);
-    setTimeout(() => setProgressStep(3), 1500);
-    setTimeout(() => {
-      setProgressStep(4);
-      setAnalyzing(false);
-      if (onRunAssessment) onRunAssessment();
-    }, 2400);
+    setProgressStep(4);
+    if (onRunAssessment) {
+      await onRunAssessment();
+    }
+    setAnalyzing(false);
   };
 
   return (

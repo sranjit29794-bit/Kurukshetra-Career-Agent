@@ -58,79 +58,15 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
 
   // --- Step 1 State: Job Source & Requirements ---
   const [sourceType, setSourceType] = useState<SourceType>('fetched');
-  const [jobUrl, setJobUrl] = useState<string>('https://boards-api.greenhouse.io/v1/boards/kinetik/jobs/5239102');
-  const [jobText, setJobText] = useState<string>(
-    'We are looking for a Backend Engineering Intern proficient in Python and FastAPI to build clean REST APIs. You will work with SQL databases, write unit and integration tests, and help containerize services for deployment with GitHub Actions CI/CD pipelines.'
-  );
-  const [jobTitle] = useState<string>('Backend Engineering Intern (Python/FastAPI)');
-  const [jobCompany] = useState<string>('Kinetik Health');
+  const [jobUrl, setJobUrl] = useState<string>('');
+  const [jobText, setJobText] = useState<string>('');
+  const [jobTitle, setJobTitle] = useState<string>('');
+  const [jobCompany, setJobCompany] = useState<string>('');
   const [isExtracting, setIsExtracting] = useState<boolean>(false);
   const [extractionError, setExtractionError] = useState<string | null>(null);
   const [extractionMode, setExtractionMode] = useState<string | null>(null);
   const [droppedRequirements, setDroppedRequirements] = useState<DroppedRequirement[]>([]);
-
-  const [requirements, setRequirements] = useState<Requirement[]>([
-    {
-      id: 'req_python',
-      name: 'Python',
-      category: 'Language',
-      priority: 'must',
-      source_sentence: 'Proficient in Python.',
-      taxonomy_key: 'python_lang',
-      search_terms: ['Python', 'typing', 'pydantic', 'asyncio'],
-      position: 1,
-    },
-    {
-      id: 'req_rest_api',
-      name: 'FastAPI / REST APIs',
-      category: 'Backend',
-      priority: 'must',
-      source_sentence: 'Proficient in Python and FastAPI to build clean REST APIs.',
-      taxonomy_key: 'rest_api',
-      search_terms: ['FastAPI', 'REST', 'router', 'endpoint', 'HTTP'],
-      position: 2,
-    },
-    {
-      id: 'req_sql_database',
-      name: 'SQL',
-      category: 'Database',
-      priority: 'must',
-      source_sentence: 'You will work with SQL databases.',
-      taxonomy_key: 'sql_database',
-      search_terms: ['SQL', 'sqlite', 'PostgreSQL', 'queries', 'database'],
-      position: 3,
-    },
-    {
-      id: 'req_testing',
-      name: 'Testing',
-      category: 'Quality Assurance',
-      priority: 'must',
-      source_sentence: 'Write unit and integration tests.',
-      taxonomy_key: 'testing',
-      search_terms: ['pytest', 'test', 'assert', 'mock', 'unittest'],
-      position: 4,
-    },
-    {
-      id: 'req_deployment',
-      name: 'Deployment',
-      category: 'DevOps',
-      priority: 'nice',
-      source_sentence: 'Help containerize services for deployment.',
-      taxonomy_key: 'deployment',
-      search_terms: ['Docker', 'Dockerfile', 'container', 'deploy', 'Kubernetes'],
-      position: 5,
-    },
-    {
-      id: 'req_ci_cd',
-      name: 'CI/CD (GitHub Actions)',
-      category: 'DevOps',
-      priority: 'nice',
-      source_sentence: 'Automate testing and deployment pipelines with GitHub Actions.',
-      taxonomy_key: 'ci_cd',
-      search_terms: ['github-actions', 'workflow', 'ci', 'cd', 'pipeline'],
-      position: 6,
-    },
-  ]);
+  const [requirements, setRequirements] = useState<Requirement[]>([]);
 
   // --- Step 2 State: Resume ---
   const [resumeMode, setResumeMode] = useState<'upload' | 'paste'>('upload');
@@ -175,17 +111,29 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
     setIsExtracting(true);
     setExtractionError(null);
 
+    // If LinkedIn URL, prompt user to paste text directly per BRAIN §11
+    if (jobUrl.toLowerCase().includes('linkedin.com')) {
+      setSourceType('user_provided');
+      setExtractionError(
+        'LinkedIn prevents automated scraping. Please copy and paste the job posting text below.'
+      );
+      setIsExtracting(false);
+      return;
+    }
+
     try {
       const res = await api.extractJob({ url: jobUrl.trim() });
       if ('status' in res && res.status === 'needs_paste') {
         setSourceType('user_provided');
         setExtractionError(
-          'LinkedIn / external site requires login authentication. Switched to manual paste mode. Your source URL is preserved.'
+          'Target job site requires manual authentication. Switched to manual paste mode. Your source URL is preserved.'
         );
       } else {
         const draft = res as JobDraft;
         setSourceType('fetched');
         setExtractionError(null);
+        if (draft.title) setJobTitle(draft.title);
+        if (draft.company) setJobCompany(draft.company);
         if (draft.extraction_mode) {
           setExtractionMode(draft.extraction_mode);
         }
@@ -217,13 +165,20 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
     setExtractionError(null);
 
     try {
-      const res = await api.extractJob({ text: jobText.trim(), url: jobUrl.trim() });
+      const res = await api.extractJob({
+        text: jobText.trim(),
+        url: jobUrl.trim(),
+        title: jobTitle.trim(),
+        company: jobCompany.trim(),
+      });
       if ('status' in res && res.status === 'needs_paste') {
         setSourceType('user_provided');
       } else {
         const draft = res as JobDraft;
         setSourceType('user_provided');
         setExtractionError(null);
+        if (draft.title && !jobTitle) setJobTitle(draft.title);
+        if (draft.company && !jobCompany) setJobCompany(draft.company);
         if (draft.extraction_mode) {
           setExtractionMode(draft.extraction_mode);
         }
@@ -242,24 +197,12 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
     }
   };
 
-  // Step 4 analysis progress animation
+  // Step 4 analysis ready state
   useEffect(() => {
-    if (step !== 4) return;
-
-    const t1 = setTimeout(() => setAnalysisStage(1), 200);   // Fetching
-    const t2 = setTimeout(() => setAnalysisStage(2), 1000);  // Scanning
-    const t3 = setTimeout(() => setAnalysisStage(3), 1900);  // Judging
-    const t4 = setTimeout(() => {
-      setAnalysisStage(4);                                   // Complete
+    if (step === 4) {
+      setAnalysisStage(4);
       setIsFinished(true);
-    }, 2800);
-
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
-    };
+    }
   }, [step]);
 
   const handleUpdateRequirement = (id: string, updates: Partial<Requirement>) => {
@@ -555,6 +498,56 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
             </p>
           </div>
 
+          {/* Job Title and Company (Confirmed or user-edited) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: 'var(--text, #E8EEF9)', marginBottom: '6px' }}>
+                Job Title
+              </label>
+              <input
+                type="text"
+                data-testid="job-title-input"
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+                placeholder="e.g. Backend Software Engineer"
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  backgroundColor: 'var(--surface-2, #101A30)',
+                  border: '1px solid var(--border, #1A2748)',
+                  borderRadius: '8px',
+                  padding: '8px 12px',
+                  color: 'var(--text, #E8EEF9)',
+                  fontSize: '13px',
+                  outline: 'none',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: 'var(--text, #E8EEF9)', marginBottom: '6px' }}>
+                Company Name
+              </label>
+              <input
+                type="text"
+                data-testid="job-company-input"
+                value={jobCompany}
+                onChange={(e) => setJobCompany(e.target.value)}
+                placeholder="e.g. Acme Health"
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  backgroundColor: 'var(--surface-2, #101A30)',
+                  border: '1px solid var(--border, #1A2748)',
+                  borderRadius: '8px',
+                  padding: '8px 12px',
+                  color: 'var(--text, #E8EEF9)',
+                  fontSize: '13px',
+                  outline: 'none',
+                }}
+              />
+            </div>
+          </div>
+
           {/* Job URL Input */}
           <div style={{ marginBottom: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
@@ -579,6 +572,7 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
               >
                 <Globe size={16} color="var(--muted, #8C9AB8)" />
                 <input
+                  data-testid="job-url-input"
                   type="url"
                   value={jobUrl}
                   onChange={(e) => setJobUrl(e.target.value)}
@@ -595,6 +589,7 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
               </div>
 
               <button
+                data-testid="fetch-preview-btn"
                 type="button"
                 onClick={handleFetchRequirements}
                 disabled={isExtracting}
@@ -636,6 +631,7 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
               Or Paste Full Job Description Text
             </label>
             <textarea
+              data-testid="job-text-input"
               value={jobText}
               onChange={(e) => {
                 setJobText(e.target.value);
@@ -659,6 +655,7 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
             />
             <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
               <button
+                data-testid="extract-text-btn"
                 type="button"
                 onClick={handleExtractPastedText}
                 disabled={isExtracting || !jobText.trim()}
@@ -762,90 +759,106 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
-              {requirements.map((req) => (
+              {requirements.length === 0 ? (
                 <div
-                  key={req.id}
+                  data-testid="no-requirements-state"
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
+                    padding: '32px 20px',
+                    textAlign: 'center',
                     backgroundColor: 'var(--surface-2, #101A30)',
-                    border: '1px solid var(--border, #1A2748)',
                     borderRadius: '8px',
-                    padding: '10px 14px',
+                    color: 'var(--muted, #8C9AB8)',
+                    fontSize: '13px',
                   }}
                 >
-                  <SkillIconTile skill={req.name} size="sm" />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <input
-                        type="text"
-                        value={req.name}
-                        onChange={(e) => handleUpdateRequirement(req.id, { name: e.target.value })}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: 'var(--text, #E8EEF9)',
-                          fontSize: '13px',
-                          fontWeight: 600,
-                          outline: 'none',
-                          width: '200px',
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleUpdateRequirement(req.id, {
-                            priority: req.priority === 'must' ? 'nice' : 'must',
-                          })
-                        }
-                        style={{
-                          backgroundColor:
-                            req.priority === 'must'
-                              ? 'rgba(47, 109, 246, 0.15)'
-                              : 'rgba(148, 163, 184, 0.15)',
-                          color: req.priority === 'must' ? '#60A5FA' : '#94A3B8',
-                          border: '1px solid rgba(47, 109, 246, 0.25)',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          padding: '2px 8px',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {req.priority.toUpperCase()}
-                      </button>
-                    </div>
-                    <div
-                      style={{
-                        fontSize: '12px',
-                        color: 'var(--muted, #8C9AB8)',
-                        marginTop: '3px',
-                        fontStyle: 'italic',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
-                      &quot;{req.source_sentence}&quot;
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteRequirement(req.id)}
+                  No technical requirements extracted yet. Enter a job posting URL above and click <strong>Fetch Preview</strong>, or paste the job description text.
+                </div>
+              ) : (
+                requirements.map((req) => (
+                  <div
+                    key={req.id}
                     style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--muted, #8C9AB8)',
-                      cursor: 'pointer',
-                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      backgroundColor: 'var(--surface-2, #101A30)',
+                      border: '1px solid var(--border, #1A2748)',
+                      borderRadius: '8px',
+                      padding: '10px 14px',
                     }}
                   >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
+                    <SkillIconTile skill={req.name} size="sm" />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input
+                          type="text"
+                          value={req.name}
+                          onChange={(e) => handleUpdateRequirement(req.id, { name: e.target.value })}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'var(--text, #E8EEF9)',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            outline: 'none',
+                            width: '200px',
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleUpdateRequirement(req.id, {
+                              priority: req.priority === 'must' ? 'nice' : 'must',
+                            })
+                          }
+                          style={{
+                            backgroundColor:
+                              req.priority === 'must'
+                                ? 'rgba(47, 109, 246, 0.15)'
+                                : 'rgba(148, 163, 184, 0.15)',
+                            color: req.priority === 'must' ? '#60A5FA' : '#94A3B8',
+                            border: '1px solid rgba(47, 109, 246, 0.25)',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            padding: '2px 8px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {req.priority.toUpperCase()}
+                        </button>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '12px',
+                          color: 'var(--muted, #8C9AB8)',
+                          marginTop: '3px',
+                          fontStyle: 'italic',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        &quot;{req.source_sentence}&quot;
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteRequirement(req.id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--muted, #8C9AB8)',
+                        cursor: 'pointer',
+                        padding: '4px',
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
 
             {/* Step 1 Actions */}
@@ -867,6 +880,8 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
 
               <button
                 type="button"
+                data-testid="next-to-resume-btn"
+                disabled={requirements.length === 0}
                 onClick={() => setStep(2)}
                 style={{
                   display: 'inline-flex',
@@ -879,7 +894,8 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
                   padding: '10px 20px',
                   fontSize: '13.5px',
                   fontWeight: 600,
-                  cursor: 'pointer',
+                  cursor: requirements.length === 0 ? 'not-allowed' : 'pointer',
+                  opacity: requirements.length === 0 ? 0.5 : 1,
                 }}
               >
                 <span>Next: Upload Resume</span>

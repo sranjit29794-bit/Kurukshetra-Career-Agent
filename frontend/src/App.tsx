@@ -156,21 +156,23 @@ export default function App() {
       try {
         const savedJob = await api.saveJob(job);
         const trackResp = await api.createTrack({
-          jobId: savedJob.id || job.id || 'job_demo',
+          jobId: String(savedJob.id || job.id || ''),
           repoUrl,
         });
         try {
           await api.checkNow(trackResp.id);
         } catch {
-          // ignore if offline
+          // ignore if check offline
         }
         const refreshed = await api.getTracks();
         setOpportunities(refreshed);
         setSelectedTrackId(trackResp.id);
         navigate(`/tracks/${trackResp.id}`);
         return;
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to create track in backend:', err);
+        alert(`Failed to save job and create track: ${err.message || 'Unknown error'}`);
+        return;
       }
     }
 
