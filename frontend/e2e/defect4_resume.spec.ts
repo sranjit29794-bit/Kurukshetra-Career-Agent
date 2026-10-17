@@ -22,6 +22,7 @@ test('Defect 4: resume upload reproduces resume_a, resume_b, and resume_c_scanne
   await expect(githubLinksSection).toContainText('https://github.com/sranjit29794-bit/student-api', { timeout: 10000 });
   await expect(githubLinksSection).toContainText('text');
   await expect(page.getByText('Source: resume_a.pdf')).toBeVisible();
+  await expect(page.locator('text=E0 Claim').first()).toBeVisible();
 
   // 2. Upload resume_b.pdf (hyperlink annotation /Annots contains GitHub URL)
   const resumeBPath = path.resolve(process.cwd(), '../docs/demo/resume_b.pdf');
@@ -40,6 +41,7 @@ test('Defect 4: resume upload reproduces resume_a, resume_b, and resume_c_scanne
   const scannedWarning = page.locator('[data-testid="scanned-pdf-warning"]');
   await expect(scannedWarning).toBeVisible({ timeout: 10000 });
   await expect(scannedWarning).toContainText('No selectable text found in this PDF (likely scanned or image-only)');
+  await expect(page.locator('[data-testid="manual-github-username-input"]')).toBeVisible();
 
   // Verify switch to paste-text option is shown and switches view
   const switchToPasteBtn = page.locator('[data-testid="scanned-switch-to-paste-btn"]');

@@ -52,6 +52,7 @@ async def parse_resume(
     if file is not None:
         file_bytes = await file.read()
         if len(file_bytes) > MAX_RESUME_SIZE:
+            logger.warning("Resume file '%s' exceeds %d bytes limit (%d bytes)", file.filename, MAX_RESUME_SIZE, len(file_bytes))
             return JSONResponse(
                 status_code=413,
                 content={
@@ -63,6 +64,7 @@ async def parse_resume(
                 },
             )
         if not file_bytes:
+            logger.warning("Resume upload failed: uploaded file '%s' is empty (0 bytes)", file.filename)
             return JSONResponse(
                 status_code=400,
                 content={
@@ -79,6 +81,7 @@ async def parse_resume(
                 filename=file.filename or "resume.pdf",
             )
         except ValueError as err:
+            logger.warning("Invalid PDF '%s': %s", file.filename, err)
             return JSONResponse(
                 status_code=400,
                 content={

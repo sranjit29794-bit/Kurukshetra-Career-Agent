@@ -132,6 +132,8 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
   const [resumePasteText, setResumePasteText] = useState<string>('');
   const [isParsingResume, setIsParsingResume] = useState<boolean>(false);
   const [isScannedPdfWarning, setIsScannedPdfWarning] = useState<boolean>(false);
+  const [resumeError, setResumeError] = useState<string | null>(null);
+  const [resumeSuccessMessage, setResumeSuccessMessage] = useState<string | null>(null);
   const [parsedResume, setParsedResume] = useState<ResumeDraftData>({
     status: 'ok',
     resume_id: '',
@@ -313,6 +315,8 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
   const processResumeFile = async (file: File) => {
     setIsParsingResume(true);
     setIsScannedPdfWarning(false);
+    setResumeError(null);
+    setResumeSuccessMessage(null);
     try {
       const data = await api.parseResume({ file });
       if (
@@ -327,6 +331,7 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
         setIsScannedPdfWarning(true);
       } else {
         setIsScannedPdfWarning(false);
+        setResumeSuccessMessage(`Successfully parsed ${file.name} (${data.claimed_skills.length} skills identified)`);
       }
       setParsedResume(data);
       if (data.repo_candidates && data.repo_candidates.length > 0) {
@@ -337,6 +342,7 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
       }
     } catch (err: any) {
       console.error('Failed to parse resume:', err);
+      setResumeError(err.message || 'Failed to upload and parse resume PDF. Please verify file format or paste text.');
     } finally {
       setIsParsingResume(false);
     }
@@ -346,12 +352,15 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
     if (!resumePasteText.trim()) return;
     setIsParsingResume(true);
     setIsScannedPdfWarning(false);
+    setResumeError(null);
+    setResumeSuccessMessage(null);
     try {
       const data = await api.parseResume({ text: resumePasteText });
       if (data.status === 'no_text') {
         setIsScannedPdfWarning(true);
       } else {
         setIsScannedPdfWarning(false);
+        setResumeSuccessMessage(`Successfully extracted ${data.claimed_skills.length} skills from resume text`);
       }
       setParsedResume(data);
       if (data.repo_candidates && data.repo_candidates.length > 0) {
@@ -362,6 +371,7 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
       }
     } catch (err: any) {
       console.error('Failed to parse pasted resume:', err);
+      setResumeError(err.message || 'Failed to parse resume text.');
     } finally {
       setIsParsingResume(false);
     }
@@ -944,47 +954,126 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
             </div>
           )}
 
+          {/* Resume Upload Error Banner */}
+          {resumeError && (
+            <div
+              data-testid="resume-error-banner"
+              style={{
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+                backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.35)',
+                borderRadius: '8px',
+                padding: '12px 16px',
+                color: '#F87171',
+                fontSize: '13px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertTriangle size={18} />
+                <span>{resumeError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResumeError(null)}
+                style={{
+                  background: 'none',
+                  border: '1px solid rgba(239, 68, 68, 0.5)',
+                  color: '#F87171',
+                  borderRadius: '4px',
+                  padding: '4px 8px',
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {/* Resume Upload Success Banner */}
+          {resumeSuccessMessage && !resumeError && (
+            <div
+              data-testid="resume-success-banner"
+              style={{
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                border: '1px solid rgba(16, 185, 129, 0.35)',
+                borderRadius: '8px',
+                padding: '10px 16px',
+                color: '#34D399',
+                fontSize: '13px',
+              }}
+            >
+              <CheckCircle2 size={16} />
+              <span>{resumeSuccessMessage}</span>
+            </div>
+          )}
+
           {/* Scanned PDF Warning per IN-3 specs */}
           {isScannedPdfWarning && (
             <div style={{ marginBottom: '18px' }} data-testid="scanned-pdf-warning">
               <div
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '12px',
                   backgroundColor: 'rgba(251, 191, 36, 0.1)',
                   border: '1px solid rgba(251, 191, 36, 0.3)',
                   borderRadius: '8px',
-                  padding: '12px 16px',
+                  padding: '14px 16px',
                   color: '#FBBF24',
                   fontSize: '13px',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <AlertTriangle size={18} />
-                  <span>
-                    No selectable text found in this PDF (likely scanned or image-only). Please switch to the &quot;Paste Resume Text&quot; tab above.
-                  </span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <AlertTriangle size={18} />
+                    <span>
+                      No selectable text found in this PDF (likely scanned or image-only). Please switch to paste text or enter your GitHub handle below.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    data-testid="scanned-switch-to-paste-btn"
+                    onClick={() => setResumeMode('paste')}
+                    style={{
+                      backgroundColor: 'rgba(251, 191, 36, 0.2)',
+                      border: '1px solid rgba(251, 191, 36, 0.5)',
+                      borderRadius: '6px',
+                      padding: '5px 12px',
+                      color: '#FBBF24',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Paste Text Option
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  data-testid="scanned-switch-to-paste-btn"
-                  onClick={() => setResumeMode('paste')}
-                  style={{
-                    backgroundColor: 'rgba(251, 191, 36, 0.2)',
-                    border: '1px solid rgba(251, 191, 36, 0.5)',
-                    borderRadius: '6px',
-                    padding: '5px 12px',
-                    color: '#FBBF24',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  Paste Text Option
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--muted, #8C9AB8)' }}>Manual GitHub entry:</span>
+                  <input
+                    type="text"
+                    data-testid="manual-github-username-input"
+                    value={githubUsername}
+                    onChange={(e) => setGithubUsername(e.target.value.trim())}
+                    placeholder="e.g. sranjit29794-bit"
+                    style={{
+                      backgroundColor: 'var(--surface-1, #0B1120)',
+                      border: '1px solid rgba(251, 191, 36, 0.4)',
+                      borderRadius: '4px',
+                      padding: '4px 8px',
+                      color: '#E8EEF9',
+                      fontSize: '12px',
+                      width: '200px',
+                    }}
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -1026,6 +1115,19 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
                 >
                   <FileText size={12} />
                   <span>{item.skill}</span>
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      backgroundColor: 'rgba(59, 130, 246, 0.25)',
+                      color: '#93C5FD',
+                      padding: '1px 5px',
+                      borderRadius: '4px',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    E0 Claim
+                  </span>
                   {item.source_line && (
                     <span style={{ opacity: 0.6, fontSize: '11px' }}>(L{item.source_line})</span>
                   )}
