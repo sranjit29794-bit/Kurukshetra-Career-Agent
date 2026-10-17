@@ -255,6 +255,32 @@ export const DiffView: React.FC<DiffViewProps> = ({ trackId, onNavigate }) => {
         </div>
       ) : (
         <div>
+          {/* Test Fixture Disclosure Banner */}
+          {(diff.from_sha?.startsWith('11111111') || diff.to_sha?.startsWith('22222222') || diff.from_sha?.startsWith('deadbeef') || diff.to_sha?.startsWith('deadbeef')) && (
+            <div
+              style={{
+                backgroundColor: 'var(--accent-partial-bg)',
+                border: '1px solid var(--accent-partial)',
+                borderRadius: 'var(--radius-md)',
+                padding: '14px 20px',
+                marginBottom: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+              }}
+            >
+              <span style={{ fontSize: '20px' }}>🧪</span>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-partial)', marginBottom: '2px' }}>
+                  AUTOMATED TEST FIXTURE COMPARISON
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                  This comparison reflects synthetic evaluation runs from the backend regression test suite (<code>tests/test_phase4_push_and_diff.py</code>). Pinned commit hashes (<code>11111111</code> ➔ <code>22222222</code>) are simulated fixtures demonstrating targeted reassessment.
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Commit Delta Header */}
           <div
             style={{

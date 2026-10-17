@@ -43,6 +43,11 @@ EXCLUDED_DIRS: Set[str] = {
     "htmlcov",
     "eggs",
     ".eggs",
+    ".agents",
+    ".gemini",
+    "scratch",
+    ".vscode",
+    ".idea",
 }
 
 # Lockfiles and generated files to skip
@@ -181,6 +186,7 @@ def filter_tree_files(
 
     total_skipped = 0
 
+    valid_candidates: List[Dict] = []
     for item in tree_entries:
         if item.get("type") != "blob":
             continue
@@ -191,15 +197,28 @@ def filter_tree_files(
         can_analyze, reason = categorize_file(path, size, max_file_bytes)
 
         if can_analyze:
-            if len(analyzable) < max_files_analyzed:
-                analyzable.append(item)
-            else:
-                total_skipped += 1
-                skipped_reasons["max_limit_exceeded"] = skipped_reasons.get("max_limit_exceeded", 0) + 1
+            valid_candidates.append(item)
         else:
             total_skipped += 1
             if reason:
                 skipped_reasons[reason] = skipped_reasons.get(reason, 0) + 1
+
+    def _file_priority(it: Dict) -> int:
+        p = it.get("path", "").lower()
+        if p.endswith((".py", ".sql")) or "dockerfile" in p:
+            return 0
+        if p.endswith((".toml", ".cfg", ".yaml", ".yml", ".txt")):
+            return 1
+        return 2
+
+    valid_candidates.sort(key=_file_priority)
+
+    for item in valid_candidates:
+        if len(analyzable) < max_files_analyzed:
+            analyzable.append(item)
+        else:
+            total_skipped += 1
+            skipped_reasons["max_limit_exceeded"] = skipped_reasons.get("max_limit_exceeded", 0) + 1
 
     # Remove zero-count reasons for cleaner reporting
     active_reasons = {k: v for k, v in skipped_reasons.items() if v > 0}

@@ -46,7 +46,7 @@ from backend.app.schemas import (
     WebhookStatus,
 )
 from backend.app.events import event_bus
-from backend.app.github.client import GitHubClient
+from backend.app.github.client import GitHubClient, GitHubError, RateLimitError
 from backend.app.detectors.runner import run_all_detectors
 from backend.app.verifier.skeptic import SkepticVerifier
 from backend.app.evaluator.engine import AssessmentEngine
@@ -469,6 +469,31 @@ async def analyze_track(track_id: int, db: Session = Depends(get_db)) -> Analysi
         repo_html_url = track.repo.html_url if track.repo else None
         return _serialize_analysis(analysis, persisted_assessments, repo_html_url)
 
+    except RateLimitError as e:
+        analysis.status = "failed"
+        analysis.error = e.message
+        analysis.finished_at = datetime.utcnow()
+        db.commit()
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "error": {
+                    "code": e.code,
+                    "message": e.message,
+                    "reset_epoch": e.reset_epoch,
+                    "retryable": True,
+                }
+            },
+        )
+    except GitHubError as e:
+        analysis.status = "failed"
+        analysis.error = e.message
+        analysis.finished_at = datetime.utcnow()
+        db.commit()
+        raise HTTPException(
+            status_code=e.status_code if e.status_code < 500 else 502,
+            detail={"error": {"code": e.code, "message": e.message, "retryable": e.retryable}},
+        )
     except Exception as e:
         analysis.status = "failed"
         analysis.error = str(e)

@@ -142,7 +142,7 @@ class GitHubClient:
         """Queries /rate_limit safely. Never throws RateLimitError."""
         url = f"{self.BASE_URL}/rate_limit"
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
                 resp = await client.get(url, headers=self.headers)
                 if resp.status_code == 200:
                     data = resp.json().get("rate", {})
@@ -165,7 +165,7 @@ class GitHubClient:
     async def get_repo_metadata(self, owner: str, repo: str) -> Dict[str, Any]:
         """Fetches repository metadata from GET /repos/{owner}/{repo}."""
         url = f"{self.BASE_URL}/repos/{owner}/{repo}"
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
             resp = await client.get(url, headers=self.headers)
             self._check_rate_limit(resp)
 
@@ -186,7 +186,7 @@ class GitHubClient:
     async def get_branch_head_sha(self, owner: str, repo: str, branch: str) -> str:
         """Resolves the exact 40-character commit SHA for a branch via GET /repos/{owner}/{repo}/commits/{branch}."""
         url = f"{self.BASE_URL}/repos/{owner}/{repo}/commits/{branch}"
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
             resp = await client.get(url, headers=self.headers)
             self._check_rate_limit(resp)
 
@@ -216,7 +216,7 @@ class GitHubClient:
         Returns (tree_entries, truncated_bool).
         """
         url = f"{self.BASE_URL}/repos/{owner}/{repo}/git/trees/{commit_sha}?recursive=1"
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
             resp = await client.get(url, headers=self.headers)
             self._check_rate_limit(resp)
 
@@ -247,7 +247,7 @@ class GitHubClient:
         Decodes base64 payload into utf-8 string. Never executes code!
         """
         url = f"{self.BASE_URL}/repos/{owner}/{repo}/git/blobs/{blob_sha}"
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
             resp = await client.get(url, headers=self.headers)
             self._check_rate_limit(resp)
 
@@ -333,7 +333,7 @@ class GitHubClient:
         Returns changed files, status, and commit details.
         """
         url = f"{self.BASE_URL}/repos/{owner}/{repo}/compare/{base_sha}...{head_sha}"
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
             resp = await client.get(url, headers=self.headers)
             self._check_rate_limit(resp)
 
