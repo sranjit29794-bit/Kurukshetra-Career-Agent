@@ -101,7 +101,11 @@ class ResumeIngestAgent:
 
     def parse_pdf(self, file_bytes: bytes, filename: str = "resume.pdf") -> ResumeDraft:
         """Parse resume PDF bytes, extracting text, visible URLs, and PDF hyperlink annotations."""
-        reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+        try:
+            reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+        except Exception as exc:
+            logger.warning("Failed to parse PDF bytes: %s", exc)
+            raise ValueError(f"Corrupted or invalid PDF document: {exc}") from exc
 
         extracted_text_pages: list[str] = []
         hyperlink_urls: list[str] = []
@@ -132,9 +136,11 @@ class ResumeIngestAgent:
 
         full_text = "\n".join(extracted_text_pages).strip()
         warnings: list[str] = []
+        status = "ok"
 
         # 3. Check for scanned / image-only PDF
         if len(full_text) < 20:
+            status = "no_text"
             warnings.append(
                 "No selectable text found in PDF. This appears to be a scanned or image-only document. "
                 "Please paste resume text directly."
@@ -152,6 +158,7 @@ class ResumeIngestAgent:
         resume_id = f"resume_{uuid.uuid4().hex[:12]}"
 
         return ResumeDraft(
+            status=status,
             resume_id=resume_id,
             filename=filename,
             text_chars=len(full_text),
@@ -163,8 +170,10 @@ class ResumeIngestAgent:
     def parse_text(self, text: str, filename: str = "pasted_resume.txt") -> ResumeDraft:
         """Parse raw resume text provided directly by candidate."""
         clean_text = text.strip()
+        status = "ok"
         warnings: list[str] = []
         if len(clean_text) < 20:
+            status = "no_text"
             warnings.append(
                 "Pasted resume text is too short to extract skills reliably."
             )
@@ -178,6 +187,7 @@ class ResumeIngestAgent:
         resume_id = f"resume_{uuid.uuid4().hex[:12]}"
 
         return ResumeDraft(
+            status=status,
             resume_id=resume_id,
             filename=filename,
             text_chars=len(clean_text),

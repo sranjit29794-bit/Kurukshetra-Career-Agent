@@ -133,7 +133,7 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
   const [resumePasteText, setResumePasteText] = useState<string>('');
   const [isParsingResume, setIsParsingResume] = useState<boolean>(false);
   const [isScannedPdfWarning, setIsScannedPdfWarning] = useState<boolean>(false);
-  const [parsedResume] = useState<ResumeDraftData>(
+  const [parsedResume, setParsedResume] = useState<ResumeDraftData>(
     resumeFixture as unknown as ResumeDraftData
   );
 
@@ -305,24 +305,70 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
     setRequirements((prev) => [...prev, newReq]);
   };
 
+  const processResumeFile = async (file: File) => {
+    setIsParsingResume(true);
+    setIsScannedPdfWarning(false);
+    try {
+      const data = await api.parseResume({ file });
+      if (
+        data.status === 'no_text' ||
+        (data.warnings &&
+          data.warnings.some(
+            (w: string) =>
+              w.toLowerCase().includes('scanned') ||
+              w.toLowerCase().includes('selectable')
+          ))
+      ) {
+        setIsScannedPdfWarning(true);
+      } else {
+        setIsScannedPdfWarning(false);
+      }
+      setParsedResume(data);
+      if (data.repo_candidates && data.repo_candidates.length > 0) {
+        const primary = data.repo_candidates[0];
+        if (primary.owner) {
+          setGithubUsername(primary.owner);
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to parse resume:', err);
+    } finally {
+      setIsParsingResume(false);
+    }
+  };
+
+  const processResumeText = async () => {
+    if (!resumePasteText.trim()) return;
+    setIsParsingResume(true);
+    setIsScannedPdfWarning(false);
+    try {
+      const data = await api.parseResume({ text: resumePasteText });
+      if (data.status === 'no_text') {
+        setIsScannedPdfWarning(true);
+      } else {
+        setIsScannedPdfWarning(false);
+      }
+      setParsedResume(data);
+      if (data.repo_candidates && data.repo_candidates.length > 0) {
+        const primary = data.repo_candidates[0];
+        if (primary.owner) {
+          setGithubUsername(primary.owner);
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to parse pasted resume:', err);
+    } finally {
+      setIsParsingResume(false);
+    }
+  };
+
   // Handle file drop / upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setResumeFile(file);
-    setIsParsingResume(true);
-    setIsScannedPdfWarning(false);
-
-    setTimeout(() => {
-      setIsParsingResume(false);
-      // Simulate scanned PDF check if filename contains scanned
-      if (file.name.toLowerCase().includes('scanned') || file.size < 500) {
-        setIsScannedPdfWarning(true);
-      } else {
-        setIsScannedPdfWarning(false);
-      }
-    }, 500);
+    processResumeFile(file);
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -330,13 +376,7 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
     const file = e.dataTransfer.files?.[0];
     if (file && file.type === 'application/pdf') {
       setResumeFile(file);
-      setIsParsingResume(true);
-      setTimeout(() => {
-        setIsParsingResume(false);
-        if (file.name.toLowerCase().includes('scanned')) {
-          setIsScannedPdfWarning(true);
-        }
-      }, 500);
+      processResumeFile(file);
     }
   };
 
@@ -848,6 +888,7 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
                 <input
                   type="file"
                   accept="application/pdf"
+                  data-testid="resume-file-input"
                   onChange={handleFileUpload}
                   style={{ display: 'none' }}
                 />
@@ -856,6 +897,7 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
           ) : (
             <div style={{ marginBottom: '20px' }}>
               <textarea
+                data-testid="resume-paste-textarea"
                 value={resumePasteText}
                 onChange={(e) => setResumePasteText(e.target.value)}
                 placeholder="Paste the full text of your resume here..."
@@ -874,17 +916,38 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
                   resize: 'vertical',
                 }}
               />
+              <button
+                type="button"
+                data-testid="extract-resume-text-btn"
+                onClick={processResumeText}
+                disabled={isParsingResume || !resumePasteText.trim()}
+                style={{
+                  marginTop: '10px',
+                  backgroundColor: 'var(--primary, #2F6DF6)',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '7px 14px',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  cursor: isParsingResume || !resumePasteText.trim() ? 'not-allowed' : 'pointer',
+                  opacity: isParsingResume || !resumePasteText.trim() ? 0.6 : 1,
+                }}
+              >
+                Extract Skills from Pasted Text
+              </button>
             </div>
           )}
 
           {/* Scanned PDF Warning per IN-3 specs */}
           {isScannedPdfWarning && (
-            <div style={{ marginBottom: '18px' }}>
+            <div style={{ marginBottom: '18px' }} data-testid="scanned-pdf-warning">
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '10px',
+                  justifyContent: 'space-between',
+                  gap: '12px',
                   backgroundColor: 'rgba(251, 191, 36, 0.1)',
                   border: '1px solid rgba(251, 191, 36, 0.3)',
                   borderRadius: '8px',
@@ -893,10 +956,30 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
                   fontSize: '13px',
                 }}
               >
-                <AlertTriangle size={18} />
-                <span>
-                  No selectable text found in this PDF (likely scanned or image-only). Please switch to the &quot;Paste Resume Text&quot; tab above.
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <AlertTriangle size={18} />
+                  <span>
+                    No selectable text found in this PDF (likely scanned or image-only). Please switch to the &quot;Paste Resume Text&quot; tab above.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  data-testid="scanned-switch-to-paste-btn"
+                  onClick={() => setResumeMode('paste')}
+                  style={{
+                    backgroundColor: 'rgba(251, 191, 36, 0.2)',
+                    border: '1px solid rgba(251, 191, 36, 0.5)',
+                    borderRadius: '6px',
+                    padding: '5px 12px',
+                    color: '#FBBF24',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Paste Text Option
+                </button>
               </div>
             </div>
           )}
@@ -946,14 +1029,24 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
             </div>
 
             {/* Extracted GitHub Links */}
-            <div style={{ fontSize: '12px', color: 'var(--muted, #8C9AB8)' }}>
+            <div style={{ fontSize: '12px', color: 'var(--muted, #8C9AB8)' }} data-testid="extracted-github-links">
               <strong>Extracted GitHub Links: </strong>
-              {parsedResume.repo_candidates.map((cand, idx) => (
-                <span key={idx} style={{ color: 'var(--text, #E8EEF9)', marginLeft: '6px' }}>
-                  {cand.url} ({cand.source})
-                  {idx < parsedResume.repo_candidates.length - 1 ? ',' : ''}
+              {parsedResume.repo_candidates.length === 0 ? (
+                <span style={{ color: 'var(--muted, #8C9AB8)', marginLeft: '6px' }} data-testid="no-github-links">
+                  None detected
                 </span>
-              ))}
+              ) : (
+                parsedResume.repo_candidates.map((cand, idx) => (
+                  <span
+                    key={idx}
+                    data-testid={`extracted-repo-${idx}`}
+                    style={{ color: 'var(--text, #E8EEF9)', marginLeft: '6px' }}
+                  >
+                    {cand.url} ({cand.source})
+                    {idx < parsedResume.repo_candidates.length - 1 ? ',' : ''}
+                  </span>
+                ))
+              )}
             </div>
           </div>
 

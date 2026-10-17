@@ -18,3 +18,4 @@ ruff
 python-dotenv
 psycopg[binary]
 pypdf
+python-multipart

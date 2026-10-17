@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -30,6 +30,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/resume", tags=["Resume"])
 
+MAX_RESUME_SIZE = 10 * 1024 * 1024  # 10 MB max resume file size
+
 
 class ResumeParseRequest(BaseModel):
     """Resume parse input payload supporting raw text or multipart metadata."""
@@ -38,61 +40,70 @@ class ResumeParseRequest(BaseModel):
     filename: str = "pasted_resume.txt"
 
 
-def _extract_file_from_multipart(body: bytes, content_type: str) -> tuple[bytes, str]:
-    """Extract file payload and filename from multipart request using Python standard library."""
-    import re
-    from email import message_from_bytes
-
-    header_bytes = f"Content-Type: {content_type}\r\n\r\n".encode("latin-1")
-    msg = message_from_bytes(header_bytes + body)
-    for part in msg.walk():
-        fn = part.get_filename()
-        if fn:
-            payload = part.get_payload(decode=True)
-            if payload:
-                return payload, fn
-
-    fn = "resume.pdf"
-    fn_match = re.search(r'filename="([^"]+)"', body.decode("latin-1", errors="ignore"))
-    if fn_match:
-        fn = fn_match.group(1)
-
-    pdf_start = body.find(b"%PDF")
-    if pdf_start != -1:
-        boundary_idx = body.rfind(b"\r\n--")
-        if boundary_idx > pdf_start:
-            return body[pdf_start:boundary_idx], fn
-        return body[pdf_start:], fn
-
-    return b"", fn
-
-
 @router.post("/parse", response_model=ResumeDraft)
 async def parse_resume(
     request: Request,
+    file: UploadFile | None = File(None),
     db: Session = Depends(get_db),
 ) -> Any:
     """Parse candidate resume from multipart file upload or text payload, extracting claims and candidate repos."""
     content_type = request.headers.get("content-type", "")
 
-    if "multipart/form-data" in content_type:
-        raw_body = await request.body()
-        file_bytes, filename = _extract_file_from_multipart(raw_body, content_type)
+    if file is not None:
+        file_bytes = await file.read()
+        if len(file_bytes) > MAX_RESUME_SIZE:
+            return JSONResponse(
+                status_code=413,
+                content={
+                    "error": {
+                        "code": "FILE_TOO_LARGE",
+                        "message": "File exceeds 10MB limit.",
+                        "retryable": False,
+                    }
+                },
+            )
         if not file_bytes:
             return JSONResponse(
                 status_code=400,
                 content={
                     "error": {
                         "code": "INVALID_INPUT",
-                        "message": "Missing or empty file in multipart upload.",
+                        "message": "Uploaded file is empty.",
                         "retryable": False,
                     }
                 },
             )
-        draft = resume_ingest.parse_pdf(file_bytes=file_bytes, filename=filename)
+        try:
+            draft = resume_ingest.parse_pdf(
+                file_bytes=file_bytes,
+                filename=file.filename or "resume.pdf",
+            )
+        except ValueError as err:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": {
+                        "code": "INVALID_PDF",
+                        "message": str(err),
+                        "retryable": False,
+                    }
+                },
+            )
 
     elif "application/json" in content_type:
-        body = await request.json()
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": {
+                        "code": "INVALID_INPUT",
+                        "message": "Invalid JSON body.",
+                        "retryable": False,
+                    }
+                },
+            )
         text = body.get("text", "")
         if not text or not text.strip():
             return JSONResponse(
@@ -105,6 +116,17 @@ async def parse_resume(
                     }
                 },
             )
+        if len(text.encode("utf-8")) > MAX_RESUME_SIZE:
+            return JSONResponse(
+                status_code=413,
+                content={
+                    "error": {
+                        "code": "FILE_TOO_LARGE",
+                        "message": "Resume text exceeds 10MB limit.",
+                        "retryable": False,
+                    }
+                },
+            )
         draft = resume_ingest.parse_text(
             text=text,
             filename=body.get("filename", "pasted_resume.txt"),
@@ -113,8 +135,34 @@ async def parse_resume(
     else:
         # Check raw body (e.g. direct application/pdf binary)
         raw_bytes = await request.body()
+        if len(raw_bytes) > MAX_RESUME_SIZE:
+            return JSONResponse(
+                status_code=413,
+                content={
+                    "error": {
+                        "code": "FILE_TOO_LARGE",
+                        "message": "Payload exceeds 10MB limit.",
+                        "retryable": False,
+                    }
+                },
+            )
         if raw_bytes.startswith(b"%PDF"):
-            draft = resume_ingest.parse_pdf(file_bytes=raw_bytes, filename="resume.pdf")
+            try:
+                draft = resume_ingest.parse_pdf(
+                    file_bytes=raw_bytes,
+                    filename="resume.pdf",
+                )
+            except ValueError as err:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "error": {
+                            "code": "INVALID_PDF",
+                            "message": str(err),
+                            "retryable": False,
+                        }
+                    },
+                )
         elif raw_bytes:
             draft = resume_ingest.parse_text(
                 text=raw_bytes.decode("utf-8", errors="ignore"),
@@ -133,6 +181,7 @@ async def parse_resume(
             )
 
     # Persist parsed resume into SQLite
+    # DATA POLICY: Store ONLY extracted claims and repo candidates - NEVER the PDF binary or raw text
     resume_model = ResumeModel(
         id=draft.resume_id,
         filename=draft.filename,

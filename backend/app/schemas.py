@@ -270,6 +270,7 @@ class RepoCandidate(BaseModel):
 class ResumeDraft(BaseModel):
     """Extracted resume claims and candidate repositories."""
 
+    status: str = "ok"
     resume_id: str
     filename: str
     text_chars: int

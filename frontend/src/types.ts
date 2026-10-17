@@ -182,6 +182,7 @@ export interface RepoCandidate {
 }
 
 export interface ResumeDraftData {
+  status?: string;
   resume_id: string;
   filename: string;
   text_chars: number;
