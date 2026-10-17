@@ -5,8 +5,8 @@ test('Step 4: real GitHub repo selector, scope validation, badges, and Not Mine 
   await page.goto('/add-job');
   await expect(page.locator('text=Step 1:')).toBeVisible();
 
-  // Step 1 -> Step 2
-  await page.locator('button', { hasText: 'Next: Upload Resume' }).click();
+  // Step 1 -> Step 2 via stepper
+  await page.getByText('Resume', { exact: true }).click();
   await expect(page.locator('text=Step 2:')).toBeVisible();
 
   // Upload resume_a.pdf which contains sranjit29794-bit

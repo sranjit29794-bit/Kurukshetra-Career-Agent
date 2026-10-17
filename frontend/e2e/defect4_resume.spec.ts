@@ -6,9 +6,8 @@ test('Defect 4: resume upload reproduces resume_a, resume_b, and resume_c_scanne
   await page.goto('/add-job');
   await expect(page.locator('text=Step 1:')).toBeVisible();
 
-  const nextToResumeBtn = page.locator('button', { hasText: 'Next: Upload Resume' });
-  await expect(nextToResumeBtn).toBeVisible();
-  await nextToResumeBtn.click();
+  // Navigate to Step 2 (Resume) via stepper header
+  await page.getByText('Resume', { exact: true }).click();
   await expect(page.locator('text=Step 2:')).toBeVisible();
 
   const fileInput = page.locator('input[data-testid="resume-file-input"]');
