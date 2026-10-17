@@ -15,20 +15,23 @@ import { StatusPill } from './StatusPill';
 import { SkillIconTile } from './SkillIconTile';
 import { ShaChip } from './ShaChip';
 import { CodeViewerDrawer } from './CodeViewerDrawer';
-import diffData from '../../../docs/fixtures/diff_c0_c2.json';
-import timelineData from '../../../docs/fixtures/analyses_timeline.json';
+import { DEV_FIXTURES } from '../lib/devFixtures';
 import type { Status } from '../types';
 
 export interface CompareViewProps {
   onBack?: () => void;
   onViewReport?: () => void;
   onViewSkillDetail?: (reqId: string) => void;
+  trackId?: string;
 }
 
 export const CompareView: React.FC<CompareViewProps> = ({
   onBack,
   onViewSkillDetail: _onViewSkillDetail,
+  trackId: _trackId,
 }) => {
+  const diffData = DEV_FIXTURES.diff;
+  const timelineData = DEV_FIXTURES.timeline;
   const [activeTab, setActiveTab] = useState<'compare' | 'timeline'>('compare');
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({
     req_sql_database: true,

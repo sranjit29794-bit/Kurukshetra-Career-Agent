@@ -10,11 +10,7 @@
  */
 
 import type { JobDraft, TrackOpportunity, RepoValidationResult, ClaimsMatrix } from '../types';
-import trackC0 from '../../../docs/fixtures/track_assessment_c0.json';
-import trackC2 from '../../../docs/fixtures/track_assessment_c2.json';
-import jobDraftFixture from '../../../docs/fixtures/job_draft.json';
-import diffFixture from '../../../docs/fixtures/diff_c0_c2.json';
-import claimsMatrixFixture from '../../../docs/fixtures/claims_matrix.json';
+import { DEV_FIXTURES } from './devFixtures';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -122,7 +118,7 @@ export const api = {
   }): Promise<JobDraft | { status: 'needs_paste'; reason: string; source_url: string; message?: string }> {
     if (FORCE_FIXTURES) {
       await new Promise((resolve) => setTimeout(resolve, 300));
-      return jobDraftFixture as unknown as JobDraft;
+      return DEV_FIXTURES.jobDraft as unknown as JobDraft;
     }
 
     return await requestJson<JobDraft | { status: 'needs_paste'; reason: string; source_url: string; message?: string }>(
@@ -157,9 +153,9 @@ export const api = {
   /**
    * Get Claims Matrix for a specific job comparing resume claims to repository tracks.
    */
-  async getClaimsMatrix(jobId = 'job_devproof_demo'): Promise<ClaimsMatrix> {
+  async getClaimsMatrix(jobId: string): Promise<ClaimsMatrix> {
     if (FORCE_FIXTURES) {
-      return claimsMatrixFixture as unknown as ClaimsMatrix;
+      return DEV_FIXTURES.claimsMatrix as unknown as ClaimsMatrix;
     }
     return await requestJson<ClaimsMatrix>(`${API_BASE}/jobs/${jobId}/claims-matrix`);
   },
@@ -277,7 +273,7 @@ export const api = {
    */
   async getTracks(): Promise<TrackOpportunity[]> {
     if (FORCE_FIXTURES) {
-      return [trackC2 as unknown as TrackOpportunity];
+      return [DEV_FIXTURES.trackC2 as unknown as TrackOpportunity];
     }
 
     const tracks = await requestJson<any[]>(`${API_BASE}/tracks`);
@@ -343,7 +339,7 @@ export const api = {
    */
   async getTrack(trackId: string, state: 'c0' | 'c2' = 'c2'): Promise<TrackOpportunity> {
     if (FORCE_FIXTURES) {
-      return (state === 'c0' ? trackC0 : trackC2) as unknown as TrackOpportunity;
+      return (state === 'c0' ? DEV_FIXTURES.trackC0 : DEV_FIXTURES.trackC2) as unknown as TrackOpportunity;
     }
 
     const t = await requestJson<any>(`${API_BASE}/tracks/${trackId}`);
@@ -388,7 +384,7 @@ export const api = {
   /**
    * Manually trigger Change Sentinel check.
    */
-  async checkNow(trackId = 'track_demo'): Promise<CheckNowResult> {
+  async checkNow(trackId: string): Promise<CheckNowResult> {
     if (FORCE_FIXTURES) {
       await new Promise((resolve) => setTimeout(resolve, 300));
       return {
@@ -410,11 +406,29 @@ export const api = {
   /**
    * Fetch before/after assessment diff.
    */
-  async getDiff(trackId = 'track_demo') {
+  async getDiff(trackId: string) {
     if (FORCE_FIXTURES) {
-      return diffFixture;
+      return DEV_FIXTURES.diff;
     }
     return await requestJson<any>(`${API_BASE}/tracks/${trackId}/diff`);
+  },
+
+  /**
+   * Delete a specific track and associated assessments.
+   */
+  async deleteTrack(trackId: string): Promise<{ deleted: boolean }> {
+    return await requestJson<{ deleted: boolean }>(`${API_BASE}/tracks/${trackId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  /**
+   * Delete all candidate data per DATA_POLICY.md.
+   */
+  async deleteMyData(): Promise<{ deleted: boolean; message: string }> {
+    return await requestJson<{ deleted: boolean; message: string }>(`${API_BASE}/tracks/user/data`, {
+      method: 'DELETE',
+    });
   },
 
   /**

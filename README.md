@@ -81,22 +81,37 @@ cp .env.example .env
 | `POLL_INTERVAL_S` | `10` | Commit polling fallback frequency in seconds |
 | `PUBLIC_BASE_URL` | `http://localhost:8000` | Public URL for webhook delivery |
 
-Run backend server:
-```bash
-uvicorn backend.app.main:app --reload --port 8000
+### Running the Stack (Real Mode)
+
+> **Important**: The application imports `backend.app...`, so `uvicorn` **MUST** be run from the repository root.
+
+#### Option A: Unified Dev Script (PowerShell)
+Runs both servers simultaneously from the repo root and fails loudly if either process terminates:
+```powershell
+.\scripts\dev.ps1
 ```
-Verify health:
+
+#### Option B: Manual Terminal Execution
+
+**Terminal 1 (Backend from REPO ROOT)**:
+```powershell
+# Activate virtual environment
+.\backend\.venv\Scripts\activate
+
+# Run from REPO ROOT (NOT inside backend directory)
+python -m uvicorn backend.app.main:app --port 8000
+```
+
+**Terminal 2 (Frontend)**:
+```powershell
+cd frontend
+npm run dev
+```
+
+Open `http://localhost:5173` in your browser. Verify backend health:
 ```bash
 curl http://localhost:8000/api/health
 ```
-
-### Frontend Setup
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Open `http://localhost:5173` in your browser.
 
 ---
 

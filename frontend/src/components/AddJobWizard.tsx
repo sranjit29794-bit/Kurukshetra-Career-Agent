@@ -19,7 +19,6 @@ import { SourceBadge } from './SourceBadge';
 import { SkillIconTile } from './SkillIconTile';
 import { InfoBanner } from './InfoBanner';
 import { api } from '../lib/api';
-import resumeFixture from '../../../docs/fixtures/resume_draft.json';
 
 interface AddJobWizardProps {
   onComplete: (job: JobDraft, repoUrl: string) => void;
@@ -133,9 +132,15 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
   const [resumePasteText, setResumePasteText] = useState<string>('');
   const [isParsingResume, setIsParsingResume] = useState<boolean>(false);
   const [isScannedPdfWarning, setIsScannedPdfWarning] = useState<boolean>(false);
-  const [parsedResume, setParsedResume] = useState<ResumeDraftData>(
-    resumeFixture as unknown as ResumeDraftData
-  );
+  const [parsedResume, setParsedResume] = useState<ResumeDraftData>({
+    status: 'ok',
+    resume_id: '',
+    filename: '',
+    text_chars: 0,
+    claimed_skills: [],
+    repo_candidates: [],
+    warnings: [],
+  });
 
   // --- Step 3 State: Repositories ---
   const [githubUsername, setGithubUsername] = useState<string>('rohan-builds');

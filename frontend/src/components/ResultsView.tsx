@@ -24,10 +24,9 @@ import { ShaChip } from './ShaChip';
 import { SkillIconTile } from './SkillIconTile';
 import { StatCard } from './StatCard';
 import { CodeViewerDrawer } from './CodeViewerDrawer';
-import { api } from '../lib/api';
+import { api, FORCE_FIXTURES } from '../lib/api';
 import type { TrackOpportunity, VerifiedAssessment } from '../types';
-import trackC0 from '../../../docs/fixtures/track_assessment_c0.json';
-import trackC2 from '../../../docs/fixtures/track_assessment_c2.json';
+import { DEV_FIXTURES } from '../lib/devFixtures';
 
 interface ResultsViewProps {
   track?: TrackOpportunity;
@@ -61,12 +60,39 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
     end: 30,
   });
 
-  // Choose active dataset: prefer real track prop, else fixture
+  // Choose active dataset: prefer real track prop, else fixture in explicit fixture mode
   const activeDataset: TrackOpportunity =
     track ||
-    (fixtureMode === 'c0'
-      ? (trackC0 as unknown as TrackOpportunity)
-      : (trackC2 as unknown as TrackOpportunity));
+    (FORCE_FIXTURES
+      ? fixtureMode === 'c0'
+        ? (DEV_FIXTURES.trackC0 as unknown as TrackOpportunity)
+        : (DEV_FIXTURES.trackC2 as unknown as TrackOpportunity)
+      : ({
+          id: '',
+          job: {
+            title: 'No Active Track',
+            company: 'Unknown',
+            source_url: '',
+            source_type: 'user_provided',
+            source_detail: '',
+            raw_text: '',
+            requirements: [],
+          },
+          repo: {
+            id: '',
+            owner: '',
+            name: '',
+            default_branch: 'main',
+            html_url: '',
+            webhook_status: 'none',
+          },
+          branch: 'main',
+          last_seen_sha: '',
+          last_assessed_at: '',
+          watcher_mode: 'polling',
+          status_summary: { demonstrated: 0, partial: 0, not_demonstrated: 0, unable: 0 },
+          assessments: [],
+        } as unknown as TrackOpportunity));
 
   const selectedSkillId = requirementId || 'req_sql_database';
 

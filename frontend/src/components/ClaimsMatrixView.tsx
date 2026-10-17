@@ -3,7 +3,8 @@ import { ArrowLeft, ArrowRight, FileText, GitBranch } from 'lucide-react';
 import type { ClaimsMatrixData } from '../types';
 import { StatusPill } from './StatusPill';
 import { InfoBanner } from './InfoBanner';
-import claimsFixture from '../../../docs/fixtures/claims_matrix.json';
+import { DEV_FIXTURES } from '../lib/devFixtures';
+import { FORCE_FIXTURES } from '../lib/api';
 
 interface ClaimsMatrixViewProps {
   jobId?: string;
@@ -18,8 +19,16 @@ export const ClaimsMatrixView: React.FC<ClaimsMatrixViewProps> = ({
   onBackToDashboard,
   onProceedToAssessment,
 }) => {
-  // Use provided data or fallback to canonical fixture
-  const matrix: ClaimsMatrixData = data || (claimsFixture as unknown as ClaimsMatrixData);
+  // Use provided real data or dev fixture in explicit fixture mode
+  const matrix: ClaimsMatrixData =
+    data ||
+    (FORCE_FIXTURES
+      ? (DEV_FIXTURES.claimsMatrix as unknown as ClaimsMatrixData)
+      : {
+          job_id: jobId || '',
+          repos: [],
+          rows: [],
+        });
   const primaryRepo = matrix.repos[0];
 
   return (

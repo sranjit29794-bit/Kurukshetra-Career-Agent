@@ -10,14 +10,14 @@ import { CompareView } from './components/CompareView';
 import { DevComponentsShowcase } from './components/DevComponentsShowcase';
 import { ClaimsMatrixView } from './components/ClaimsMatrixView';
 import type { JobDraft, TrackOpportunity, RecentChange, NextAction } from './types';
-import trackC2 from '../../docs/fixtures/track_assessment_c2.json';
+import { DEV_FIXTURES } from './lib/devFixtures';
 import { api, FORCE_FIXTURES } from './lib/api';
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState<string>(
     typeof window !== 'undefined' ? window.location.pathname || '/' : '/'
   );
-  const [selectedTrackId, setSelectedTrackId] = useState<string>('track_demo');
+  const [selectedTrackId, setSelectedTrackId] = useState<string>('');
 
   // Handle browser back/forward buttons
   useEffect(() => {
@@ -38,7 +38,7 @@ export default function App() {
 
   // Tracked Opportunities state (loads real tracks from SQLite DB; fixture only if VITE_USE_FIXTURES=1)
   const [opportunities, setOpportunities] = useState<TrackOpportunity[]>(
-    FORCE_FIXTURES ? [trackC2 as unknown as TrackOpportunity] : []
+    FORCE_FIXTURES ? [DEV_FIXTURES.trackC2 as unknown as TrackOpportunity] : []
   );
 
   const [healthInfo, setHealthInfo] = useState<{
