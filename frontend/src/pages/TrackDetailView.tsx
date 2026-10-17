@@ -60,9 +60,16 @@ export const TrackDetailView: React.FC<TrackDetailViewProps> = ({ trackId, onNav
       if (res.ok) {
         const data: CoachingResponse = await res.json();
         setCoachingData(data);
+        setCoachingError(null);
       } else {
         const err = await res.json().catch(() => null);
-        setCoachingError(err?.error?.message || 'Coaching guidance unavailable');
+        if (res.status === 404 && err?.error?.code === 'NO_ANALYSIS_FOUND') {
+          // Assessment not completed yet: clear data and display clean pending state
+          setCoachingData(null);
+          setCoachingError(null);
+        } else {
+          setCoachingError(err?.error?.message || 'Coaching guidance unavailable');
+        }
       }
     } catch (err: any) {
       setCoachingError(err.message || 'Failed to fetch coaching guidance');
@@ -164,7 +171,8 @@ export const TrackDetailView: React.FC<TrackDetailViewProps> = ({ trackId, onNav
     setAnalysisLoading(true);
     setAnalysisError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/tracks/${trackId}/analyze`, {
+      const forceParam = activeAnalysis ? '?force=true' : '';
+      const res = await fetch(`${API_BASE}/api/tracks/${trackId}/analyze${forceParam}`, {
         method: 'POST',
       });
       const data = await res.json();
@@ -511,6 +519,9 @@ export const TrackDetailView: React.FC<TrackDetailViewProps> = ({ trackId, onNav
                 </>
               )}
             </button>
+            <div style={{ fontSize: '11px', color: 'var(--text-dim)', textAlign: 'center', marginTop: '-4px' }}>
+              Full AST evaluation at pinned commit
+            </div>
 
             <button
               onClick={handleManualCheck}
@@ -527,10 +538,14 @@ export const TrackDetailView: React.FC<TrackDetailViewProps> = ({ trackId, onNav
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '6px',
+                cursor: 'pointer',
               }}
             >
               {checkLoading ? 'Checking GitHub...' : '🔍 Check for New Commits'}
             </button>
+            <div style={{ fontSize: '11px', color: 'var(--text-dim)', textAlign: 'center', marginTop: '-4px' }}>
+              ChangeSentinel: poll remote branch for new pushes
+            </div>
           </div>
         </div>
 
@@ -865,14 +880,41 @@ export const TrackDetailView: React.FC<TrackDetailViewProps> = ({ trackId, onNav
                             marginTop: '12px',
                             backgroundColor: 'var(--bg-surface)',
                             borderLeft: '4px solid var(--text-dim)',
-                            padding: '10px 14px',
+                            padding: '12px 14px',
                             borderRadius: '0 var(--radius-sm) var(--radius-sm) 0',
                             fontSize: '12px',
                             color: 'var(--text-muted)',
                             lineHeight: '1.5',
                           }}
                         >
-                          <strong style={{ color: 'var(--text-main)' }}>Scope Caveat:</strong> Evidence for this requirement was not detected within the analyzed repository scope for commit <code style={{ color: 'var(--text-main)' }}>{activeAnalysis?.commit_sha?.slice(0, 8)}</code>. This does <em>not</em> indicate a lack of student skill—only that matching code patterns were not found in the examined files.
+                          <div>
+                            <strong style={{ color: 'var(--text-main)' }}>Scope Caveat:</strong> Evidence for this requirement was not detected within the analyzed repository scope for commit <code style={{ color: 'var(--text-main)' }}>{activeAnalysis?.commit_sha?.slice(0, 8)}</code>. This does <em>not</em> indicate a lack of student skill—only that matching code patterns were not found in the examined files.
+                          </div>
+                          {a.next_step && (
+                            <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                              <span>
+                                <strong style={{ color: 'var(--accent-primary)' }}>Recommended Next Step:</strong> {a.next_step}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  setPrimaryTab('coaching');
+                                  if (!coachingData) fetchCoaching();
+                                }}
+                                style={{
+                                  backgroundColor: 'transparent',
+                                  border: '1px solid var(--border-card)',
+                                  color: 'var(--accent-primary)',
+                                  padding: '4px 10px',
+                                  borderRadius: 'var(--radius-sm)',
+                                  fontSize: '11px',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                View Coaching Roadmap 🎯
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -1621,14 +1663,37 @@ export const TrackDetailView: React.FC<TrackDetailViewProps> = ({ trackId, onNav
             <div
               style={{
                 backgroundColor: 'var(--bg-surface)',
-                border: '1px solid var(--border-card)',
+                border: '1px dashed var(--border-card)',
                 borderRadius: 'var(--radius-lg)',
-                padding: '40px',
+                padding: '48px 24px',
                 textAlign: 'center',
                 color: 'var(--text-muted)',
               }}
             >
-              Run an assessment to unlock grounded career coaching recommendations.
+              <div style={{ fontSize: '32px', marginBottom: '14px' }}>🎯</div>
+              <h3 style={{ color: 'var(--text-main)', fontSize: '18px', fontWeight: 700, margin: '0 0 8px 0' }}>
+                Assessment Required for Coaching Guidance
+              </h3>
+              <p style={{ maxWidth: '520px', margin: '0 auto 24px auto', fontSize: '13px', lineHeight: 1.6 }}>
+                Career coaching in DevProof is derived strictly from confirmed job requirements and verified code AST evidence. Run an assessment on this track to generate your personalized readiness roadmap.
+              </p>
+              <button
+                onClick={handleRunAssessment}
+                disabled={analysisLoading}
+                style={{
+                  backgroundColor: 'var(--accent-primary)',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '10px 22px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  boxShadow: 'var(--shadow-sm)',
+                }}
+              >
+                {analysisLoading ? 'Evaluating Code Evidence...' : '⚡ Run Assessment to Unlock Coaching'}
+              </button>
             </div>
           ) : (
             <div>

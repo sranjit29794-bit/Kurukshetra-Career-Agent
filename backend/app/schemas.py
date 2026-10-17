@@ -172,6 +172,8 @@ class JobExtractRequest(BaseModel):
     url: Optional[str] = None
     text: Optional[str] = None
     source_url: Optional[str] = None
+    target_role: Optional[str] = None
+    mode: Optional[str] = "auto"  # "text" | "url" | "combined" | "auto"
 
 
 class JobDraft(BaseModel):
@@ -184,6 +186,8 @@ class JobDraft(BaseModel):
     confirmed: bool = False
     requirements: List[RequirementDraft] = Field(default_factory=list)
     ambiguities: List[str] = Field(default_factory=list)
+    extracted_at: Optional[str] = None
+    input_mode: Optional[str] = None
 
 
 class JobUpdateRequest(BaseModel):

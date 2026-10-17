@@ -114,6 +114,8 @@ export interface JobExtractRequest {
   url?: string;
   text?: string;
   source_url?: string;
+  target_role?: string;
+  mode?: 'text' | 'url' | 'combined' | 'auto';
 }
 
 export interface JobDraft {
@@ -126,6 +128,8 @@ export interface JobDraft {
   confirmed: boolean;
   requirements: RequirementDraft[];
   ambiguities: string[];
+  extracted_at?: string | null;
+  input_mode?: string | null;
 }
 
 export interface JobUpdateRequest {

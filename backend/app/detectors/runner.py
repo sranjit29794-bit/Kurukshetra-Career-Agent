@@ -7,6 +7,7 @@ from backend.app.detectors.testing import detect_testing
 from backend.app.detectors.auth import detect_auth
 from backend.app.detectors.async_concurrency import detect_async_concurrency
 from backend.app.detectors.deployment import detect_deployment
+from backend.app.detectors.python import detect_python
 
 
 def run_all_detectors(file_path: str, content: str, blob_sha: str = "") -> List[DetectedSignal]:
@@ -18,4 +19,5 @@ def run_all_detectors(file_path: str, content: str, blob_sha: str = "") -> List[
     signals.extend(detect_auth(file_path, content, blob_sha))
     signals.extend(detect_async_concurrency(file_path, content, blob_sha))
     signals.extend(detect_deployment(file_path, content, blob_sha))
+    signals.extend(detect_python(file_path, content, blob_sha))
     return signals

@@ -38,10 +38,13 @@ class AssessmentEngine:
                 matching_evidence.append(ev)
                 continue
 
-            # Check search terms in file_path or snippet
+            # Check search terms in file_path or snippet (using word boundaries to prevent substring false positives)
             if req.search_terms:
+                import re
                 for term in req.search_terms:
-                    if term.lower() in ev.file_path.lower() or term.lower() in ev.snippet.lower():
+                    term_escaped = re.escape(term.lower())
+                    pattern = rf"\b{term_escaped}\b" if not term.startswith((".", "/")) else term_escaped
+                    if re.search(pattern, ev.file_path.lower()) or re.search(pattern, ev.snippet.lower()):
                         matching_evidence.append(ev)
                         break
 

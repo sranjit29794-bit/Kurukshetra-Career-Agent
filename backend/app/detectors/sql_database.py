@@ -66,6 +66,13 @@ def detect_sql_database(file_path: str, content: str, blob_sha: str = "") -> Lis
     for node in ast.walk(tree):
         # 1. ORM Class definition (SQLAlchemy / Tortoise / Peewee / Django)
         if isinstance(node, ast.ClassDef):
+            # Look for __tablename__ attribute (standard SQLAlchemy)
+            has_tablename = any(
+                isinstance(stmt, ast.Assign)
+                and any(isinstance(target, ast.Name) and target.id == "__tablename__" for target in stmt.targets)
+                for stmt in node.body
+            )
+
             is_orm = False
             for base in node.bases:
                 base_name = ""
@@ -74,18 +81,15 @@ def detect_sql_database(file_path: str, content: str, blob_sha: str = "") -> Lis
                 elif isinstance(base, ast.Attribute):
                     base_name = base.attr.lower()
 
-                if base_name in ORM_BASE_CLASSES or "model" in base_name:
+                # Explicitly exclude Pydantic schemas (BaseModel) which are validation schemas, not SQL ORM models
+                if "basemodel" in base_name:
+                    continue
+
+                if base_name in ORM_BASE_CLASSES:
                     is_orm = True
                     break
 
-            # Look for __tablename__ attribute
-            has_tablename = any(
-                isinstance(stmt, ast.Assign)
-                and any(isinstance(target, ast.Name) and target.id == "__tablename__" for target in stmt.targets)
-                for stmt in node.body
-            )
-
-            if is_orm or has_tablename:
+            if (is_orm and not any("basemodel" in getattr(b, "id", getattr(b, "attr", "")).lower() for b in node.bases)) or has_tablename:
                 start_l = node.lineno
                 end_l = min(node.end_lineno or start_l, start_l + 8)
                 snippet = "\n".join(lines[start_l - 1:end_l])

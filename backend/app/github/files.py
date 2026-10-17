@@ -205,11 +205,35 @@ def filter_tree_files(
 
     def _file_priority(it: Dict) -> int:
         p = it.get("path", "").lower()
-        if p.endswith((".py", ".sql")) or "dockerfile" in p:
+        parts = p.split("/")
+        is_doc = any(part in ("docs", "docs_src", "doc", "documentation", "examples", "tutorial") for part in parts)
+        is_test = any(part in ("tests", "test", "testing") for part in parts)
+
+        # Tier 0: Root deployment / manifest / config
+        if "dockerfile" in p or p.endswith(("docker-compose.yml", "requirements.txt", "pyproject.toml", "setup.py", "setup.cfg", "render.yaml", "fly.toml", "procfile")):
             return 0
-        if p.endswith((".toml", ".cfg", ".yaml", ".yml", ".txt")):
+
+        # Tier 1: Core application/package source code (non-doc, non-test)
+        if p.endswith((".py", ".sql")) and not is_test and not is_doc:
             return 1
-        return 2
+
+        # Tier 2: Automated test files
+        if p.endswith(".py") and is_test:
+            return 2
+
+        # Tier 3: Code examples & docs code snippets
+        if p.endswith((".py", ".sql")) and is_doc:
+            return 3
+
+        # Tier 4: Other configs / YAML
+        if p.endswith((".toml", ".cfg", ".yaml", ".yml", ".txt")):
+            return 4
+
+        # Tier 5: Documentation markdown
+        if p.endswith(".md"):
+            return 5
+
+        return 6
 
     valid_candidates.sort(key=_file_priority)
 

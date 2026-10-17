@@ -132,17 +132,25 @@ async def process_new_commit(
 
         # Fetch files content (cached by blob SHA)
         files_map: Dict[str, str] = {}
+        files_by_sha = {}
+        seen_shas_in_batch = set()
         for f in analyzable_files:
             file_path = f["path"]
             blob_sha = f.get("sha", "")
             cached = db.query(FileCache).filter_by(blob_sha=blob_sha).first()
             if cached:
                 files_map[file_path] = cached.content
+                files_by_sha[blob_sha] = cached.content
+            elif blob_sha in files_by_sha:
+                files_map[file_path] = files_by_sha[blob_sha]
             else:
                 try:
                     content = await client.get_blob_content(repo.owner, repo.name, blob_sha)
-                    db.merge(FileCache(blob_sha=blob_sha, path=file_path, content=content))
                     files_map[file_path] = content
+                    files_by_sha[blob_sha] = content
+                    if blob_sha and blob_sha not in seen_shas_in_batch:
+                        db.merge(FileCache(blob_sha=blob_sha, path=file_path, content=content))
+                        seen_shas_in_batch.add(blob_sha)
                 except Exception:
                     continue
         db.commit()

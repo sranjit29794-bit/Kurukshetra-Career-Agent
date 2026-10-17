@@ -20,13 +20,15 @@ export const CareerTrack: React.FC<CareerTrackProps> = ({ onNavigate }) => {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
 
   // Job Ingestion State
-  const [inputMode, setInputMode] = useState<'url' | 'text'>('text');
+  const [inputMode, setInputMode] = useState<'text' | 'url' | 'combined'>('text');
   const [jobUrl, setJobUrl] = useState('');
   const [jobText, setJobText] = useState(
     'NovaPay Financial is seeking a Backend Engineering Intern.\nResponsibilities:\n- Design and implement high-performance RESTful APIs using Python frameworks (FastAPI/Flask).\n- Proficiency in SQL query optimization and relational schema design.\n- Write automated unit and integration tests with pytest to maintain coverage.\n- Experience deploying services with Docker containers is a plus.'
   );
+  const [targetRole, setTargetRole] = useState('');
   const [extractLoading, setExtractLoading] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
+  const [extractErrorCode, setExtractErrorCode] = useState<string | null>(null);
 
   // Review & Confirmation State
   const [jobDraft, setJobDraft] = useState<JobDraft | null>(null);
@@ -53,13 +55,33 @@ export const CareerTrack: React.FC<CareerTrackProps> = ({ onNavigate }) => {
   const [persistedTrack, setPersistedTrack] = useState<TrackDetail | null>(null);
 
   // 1. Submit Job Ingestion
-  const handleExtractJob = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleExtractJob = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setExtractLoading(true);
     setExtractError(null);
+    setExtractErrorCode(null);
 
-    const payload: JobExtractRequest =
-      inputMode === 'url' ? { url: jobUrl.trim() } : { text: jobText.trim() };
+    let payload: JobExtractRequest;
+    if (inputMode === 'url') {
+      payload = {
+        url: jobUrl.trim(),
+        target_role: targetRole.trim() || undefined,
+        mode: 'url',
+      };
+    } else if (inputMode === 'combined') {
+      payload = {
+        url: jobUrl.trim(),
+        text: jobText.trim(),
+        target_role: targetRole.trim() || undefined,
+        mode: 'combined',
+      };
+    } else {
+      payload = {
+        text: jobText.trim(),
+        target_role: targetRole.trim() || undefined,
+        mode: 'text',
+      };
+    }
 
     try {
       const res = await fetch(`${API_BASE}/api/jobs/extract`, {
@@ -71,6 +93,9 @@ export const CareerTrack: React.FC<CareerTrackProps> = ({ onNavigate }) => {
       const data = await res.json();
       if (!res.ok) {
         const err = data as ErrorResponse;
+        if (err.error?.code) {
+          setExtractErrorCode(err.error.code);
+        }
         throw new Error(err.error?.message || `Extraction failed (${res.status})`);
       }
 
@@ -298,14 +323,20 @@ export const CareerTrack: React.FC<CareerTrackProps> = ({ onNavigate }) => {
         })}
       </div>
 
-      {/* STEP 1: JOB INGESTION */}
+      {/* STEP 1: UNIVERSAL JOB INGESTION */}
       {currentStep === 1 && (
         <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-card)', borderRadius: 'var(--radius-lg)', padding: '28px', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
-              1. Job Description Source
-            </h2>
-            <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
+                1. Universal Job Description Import
+              </h2>
+              <p style={{ fontSize: '12px', color: 'var(--text-dim)', margin: '4px 0 0 0' }}>
+                Import from a public posting URL, paste text directly, or combine both for access-protected job boards.
+              </p>
+            </div>
+            {/* 3-Mode Selector */}
+            <div style={{ display: 'flex', gap: '6px', backgroundColor: 'var(--bg-app)', padding: '4px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
               <button
                 type="button"
                 data-testid="input-mode-text"
@@ -313,14 +344,19 @@ export const CareerTrack: React.FC<CareerTrackProps> = ({ onNavigate }) => {
                 style={{
                   backgroundColor: inputMode === 'text' ? 'var(--bg-surface-elevated)' : 'transparent',
                   color: inputMode === 'text' ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                  border: inputMode === 'text' ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
-                  padding: '6px 14px',
+                  border: inputMode === 'text' ? '1px solid var(--accent-cyan)' : '1px solid transparent',
+                  padding: '6px 12px',
                   borderRadius: 'var(--radius-sm)',
                   fontSize: '12px',
                   fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
                 }}
               >
-                Direct Text Input
+                <span>📝</span>
+                <span>Paste description</span>
               </button>
               <button
                 type="button"
@@ -329,22 +365,73 @@ export const CareerTrack: React.FC<CareerTrackProps> = ({ onNavigate }) => {
                 style={{
                   backgroundColor: inputMode === 'url' ? 'var(--bg-surface-elevated)' : 'transparent',
                   color: inputMode === 'url' ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                  border: inputMode === 'url' ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
-                  padding: '6px 14px',
+                  border: inputMode === 'url' ? '1px solid var(--accent-cyan)' : '1px solid transparent',
+                  padding: '6px 12px',
                   borderRadius: 'var(--radius-sm)',
                   fontSize: '12px',
                   fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
                 }}
               >
-                Public Job URL
+                <span>🔗</span>
+                <span>Import from URL</span>
+              </button>
+              <button
+                type="button"
+                data-testid="input-mode-combined"
+                onClick={() => setInputMode('combined')}
+                style={{
+                  backgroundColor: inputMode === 'combined' ? 'var(--bg-surface-elevated)' : 'transparent',
+                  color: inputMode === 'combined' ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                  border: inputMode === 'combined' ? '1px solid var(--accent-cyan)' : '1px solid transparent',
+                  padding: '6px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <span>⚡</span>
+                <span>URL + description</span>
               </button>
             </div>
           </div>
 
           <form onSubmit={handleExtractJob}>
-            {inputMode === 'url' ? (
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>
+            {/* Optional Manual Target Role */}
+            <div style={{ marginBottom: '18px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  Target Role / Position Title <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 400 }}>(Optional override)</span>
+                </label>
+              </div>
+              <input
+                type="text"
+                placeholder="e.g. Senior Backend Engineer (leave blank to infer automatically from job text)"
+                value={targetRole}
+                onChange={(e) => setTargetRole(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border-card)',
+                  backgroundColor: 'var(--bg-app)',
+                  color: 'var(--text-main)',
+                  fontSize: '13px',
+                }}
+              />
+            </div>
+
+            {/* URL Input (if url or combined) */}
+            {(inputMode === 'url' || inputMode === 'combined') && (
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
                   Public Job Posting URL
                 </label>
                 <input
@@ -352,32 +439,93 @@ export const CareerTrack: React.FC<CareerTrackProps> = ({ onNavigate }) => {
                   placeholder="https://jobs.example.com/posting/backend-intern"
                   value={jobUrl}
                   onChange={(e) => setJobUrl(e.target.value)}
-                  required
+                  required={inputMode === 'url'}
                   style={{
                     width: '100%',
-                    padding: '12px 16px',
+                    padding: '10px 14px',
                     borderRadius: 'var(--radius-sm)',
                     border: '1px solid var(--border-card)',
                     backgroundColor: 'var(--bg-app)',
                     color: 'var(--text-main)',
-                    fontSize: '14px',
+                    fontSize: '13px',
                   }}
                 />
+                {/* Example pills */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>Try example:</span>
+                  <button
+                    type="button"
+                    onClick={() => setJobUrl('https://boards.greenhouse.io/stripe/jobs/5234123')}
+                    style={{
+                      background: 'none',
+                      border: '1px dashed var(--border-subtle)',
+                      borderRadius: 'var(--radius-xs)',
+                      padding: '2px 8px',
+                      fontSize: '11px',
+                      color: 'var(--accent-cyan)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Greenhouse
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setJobUrl('https://jobs.lever.co/postman/backend-engineer')}
+                    style={{
+                      background: 'none',
+                      border: '1px dashed var(--border-subtle)',
+                      borderRadius: 'var(--radius-xs)',
+                      padding: '2px 8px',
+                      fontSize: '11px',
+                      color: 'var(--accent-cyan)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Lever
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setJobUrl('https://careers.google.com/jobs/results/12345')}
+                    style={{
+                      background: 'none',
+                      border: '1px dashed var(--border-subtle)',
+                      borderRadius: 'var(--radius-xs)',
+                      padding: '2px 8px',
+                      fontSize: '11px',
+                      color: 'var(--accent-cyan)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Company Careers
+                  </button>
+                </div>
+                {/* Access note */}
+                <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--text-dim)', lineHeight: '1.4' }}>
+                  ℹ️ Public postings (Greenhouse, Lever, public career sites) extract directly. For login-walled platforms (LinkedIn, Naukri, Internshala), use <strong>URL + description</strong> mode to preserve the URL citation while parsing the pasted description.
+                </div>
               </div>
-            ) : (
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>
-                  Job Description Text
-                </label>
+            )}
+
+            {/* Pasted Text Input (if text or combined) */}
+            {(inputMode === 'text' || inputMode === 'combined') && (
+              <div style={{ marginBottom: '18px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
+                    Job Description Text
+                  </label>
+                  <span style={{ fontSize: '11px', color: jobText.length < 20 ? 'var(--accent-amber)' : 'var(--text-dim)' }}>
+                    {jobText.length} characters {jobText.length < 20 ? '(min 20 required)' : ''}
+                  </span>
+                </div>
                 <textarea
-                  rows={8}
-                  placeholder="Paste the job description text here..."
+                  rows={inputMode === 'combined' ? 6 : 8}
+                  placeholder="Paste the job description text, responsibilities, and required qualifications here..."
                   value={jobText}
                   onChange={(e) => setJobText(e.target.value)}
-                  required
+                  required={inputMode === 'text'}
                   style={{
                     width: '100%',
-                    padding: '12px 16px',
+                    padding: '12px 14px',
                     borderRadius: 'var(--radius-sm)',
                     border: '1px solid var(--border-card)',
                     backgroundColor: 'var(--bg-app)',
@@ -390,16 +538,77 @@ export const CareerTrack: React.FC<CareerTrackProps> = ({ onNavigate }) => {
               </div>
             )}
 
+            {/* Actionable Error State */}
             {extractError && (
-              <div style={{ backgroundColor: 'var(--accent-rose-glow)', border: '1px solid var(--accent-rose)', borderRadius: 'var(--radius-sm)', padding: '12px 16px', marginBottom: '20px', color: 'var(--accent-rose)', fontSize: '13px' }}>
-                <strong>Extraction Error:</strong> {extractError}
+              <div
+                style={{
+                  backgroundColor: 'var(--accent-rose-glow)',
+                  border: '1px solid var(--accent-rose)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '14px 16px',
+                  marginBottom: '20px',
+                  color: 'var(--accent-rose)',
+                  fontSize: '13px',
+                }}
+              >
+                <div style={{ fontWeight: 700, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>⚠️ Import Error</span>
+                  {extractErrorCode && (
+                    <span style={{ fontSize: '11px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(244, 63, 94, 0.2)', fontFamily: 'JetBrains Mono, monospace' }}>
+                      {extractErrorCode}
+                    </span>
+                  )}
+                </div>
+                <div style={{ marginBottom: '12px', lineHeight: '1.5' }}>{extractError}</div>
+                {/* Fallback actions if URL failed */}
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  {(inputMode === 'url' || inputMode === 'combined') && (
+                    <button
+                      type="button"
+                      onClick={() => setInputMode('combined')}
+                      style={{
+                        backgroundColor: 'var(--bg-surface-elevated)',
+                        color: 'var(--text-main)',
+                        border: '1px solid var(--border-card)',
+                        padding: '6px 12px',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      📝 Switch to Pasted Text & Keep URL
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleExtractJob()}
+                    style={{
+                      backgroundColor: 'transparent',
+                      color: 'var(--accent-cyan)',
+                      border: '1px solid var(--accent-cyan)',
+                      padding: '6px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ↻ Retry Extraction
+                  </button>
+                </div>
               </div>
             )}
 
             <button
               type="submit"
               data-testid="parse-requirements-btn"
-              disabled={extractLoading || (inputMode === 'url' ? !jobUrl.trim() : !jobText.trim())}
+              disabled={
+                extractLoading ||
+                (inputMode === 'url' && !jobUrl.trim()) ||
+                (inputMode === 'text' && (!jobText.trim() || jobText.trim().length < 20)) ||
+                (inputMode === 'combined' && (!jobUrl.trim() && (!jobText.trim() || jobText.trim().length < 20)))
+              }
               style={{
                 backgroundColor: 'var(--accent-cyan)',
                 color: '#080c14',
@@ -411,16 +620,18 @@ export const CareerTrack: React.FC<CareerTrackProps> = ({ onNavigate }) => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
+                cursor: extractLoading ? 'wait' : 'pointer',
+                opacity: extractLoading ? 0.7 : 1,
               }}
             >
               {extractLoading ? (
                 <>
                   <span className="live-pulse">↻</span>
-                  <span>Extracting Skills...</span>
+                  <span>Extracting & Normalizing Requirements...</span>
                 </>
               ) : (
                 <>
-                  <span>Parse Engineering Requirements</span>
+                  <span>Extract Requirements</span>
                   <span>→</span>
                 </>
               )}
@@ -432,10 +643,42 @@ export const CareerTrack: React.FC<CareerTrackProps> = ({ onNavigate }) => {
       {/* STEP 2: REVIEW & CONFIRM REQUIREMENTS */}
       {currentStep === 2 && (
         <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-card)', borderRadius: 'var(--radius-lg)', padding: '28px', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
-              2. Review & Refine Requirements
-            </h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
+                2. Review & Refine Requirements
+              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px', flexWrap: 'wrap' }}>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: 'var(--radius-xs)',
+                    backgroundColor: jobDraft?.source_type === 'fetched' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                    color: jobDraft?.source_type === 'fetched' ? 'var(--accent-cyan)' : 'var(--accent-emerald)',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Source: {jobDraft?.source_type || 'User Provided'}
+                </span>
+                {jobDraft?.source_url && (
+                  <a
+                    href={jobDraft.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: '12px', color: 'var(--accent-cyan)', textDecoration: 'underline' }}
+                  >
+                    View Original Job Posting ↗
+                  </a>
+                )}
+                {jobDraft?.extracted_at && (
+                  <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                    Extracted: {new Date(jobDraft.extracted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
+              </div>
+            </div>
             <button
               type="button"
               onClick={() => setCurrentStep(1)}
@@ -447,11 +690,36 @@ export const CareerTrack: React.FC<CareerTrackProps> = ({ onNavigate }) => {
                 borderRadius: 'var(--radius-sm)',
                 fontSize: '12px',
                 fontWeight: 600,
+                cursor: 'pointer',
               }}
             >
               ← Edit Job Source
             </button>
           </div>
+
+          {/* Ambiguities / Reconciliation Notices */}
+          {jobDraft?.ambiguities && jobDraft.ambiguities.length > 0 && (
+            <div
+              style={{
+                backgroundColor: 'rgba(56, 189, 248, 0.08)',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '12px 16px',
+                marginBottom: '20px',
+                fontSize: '12px',
+                color: 'var(--accent-cyan)',
+              }}
+            >
+              <div style={{ fontWeight: 700, marginBottom: '4px' }}>ℹ️ Extraction & Source Notes:</div>
+              <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                {jobDraft.ambiguities.map((note, idx) => (
+                  <li key={idx} style={{ lineHeight: '1.5' }}>
+                    {note}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
             <div>
@@ -496,13 +764,76 @@ export const CareerTrack: React.FC<CareerTrackProps> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Requirements List */}
+          {/* Requirements Breakdown & Summary Header */}
           <div style={{ marginBottom: '24px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: '12px' }}>
-              Extracted Engineering Requirements ({requirements.length})
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Extracted Requirements Breakdown
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--text-dim)', marginTop: '2px' }}>
+                  Review and edit identified skills, priorities, and source evidence before generating track.
+                </div>
+              </div>
+
+              {/* Distinction counters */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-xs)',
+                    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+                    color: 'var(--accent-cyan)',
+                    border: '1px solid rgba(56, 189, 248, 0.25)',
+                  }}
+                >
+                  {requirements.length} Total Unique Skills
+                </span>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-xs)',
+                    backgroundColor: 'rgba(244, 63, 94, 0.12)',
+                    color: 'var(--accent-rose)',
+                    border: '1px solid rgba(244, 63, 94, 0.25)',
+                  }}
+                >
+                  {requirements.filter((r) => r.priority === 'must').length} Core Requirements
+                </span>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-xs)',
+                    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                    color: 'var(--accent-emerald)',
+                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                  }}
+                >
+                  {requirements.filter((r) => r.priority === 'nice').length} Learning / Preferred
+                </span>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-xs)',
+                    backgroundColor: 'rgba(168, 85, 247, 0.12)',
+                    color: 'var(--accent-purple, #a855f7)',
+                    border: '1px solid rgba(168, 85, 247, 0.25)',
+                  }}
+                >
+                  {new Set(requirements.map((r) => r.category)).size} Competency Categories
+                </span>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {requirements.map((req, idx) => (
                 <div
                   key={idx}
@@ -512,63 +843,83 @@ export const CareerTrack: React.FC<CareerTrackProps> = ({ onNavigate }) => {
                     borderRadius: 'var(--radius-sm)',
                     padding: '14px 18px',
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '12px',
+                    flexDirection: 'column',
+                    gap: '8px',
                   }}
                 >
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono, monospace' }}>
-                      #{idx + 1}
-                    </span>
-                    <input
-                      type="text"
-                      value={req.name}
-                      onChange={(e) => handleUpdateRequirement(idx, 'name', e.target.value)}
-                      style={{
-                        flex: 1,
-                        backgroundColor: 'transparent',
-                        border: 'none',
-                        color: 'var(--text-main)',
-                        fontWeight: 600,
-                        fontSize: '14px',
-                      }}
-                    />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono, monospace' }}>
+                        #{idx + 1}
+                      </span>
+                      <input
+                        type="text"
+                        value={req.name}
+                        onChange={(e) => handleUpdateRequirement(idx, 'name', e.target.value)}
+                        style={{
+                          flex: 1,
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          color: 'var(--text-main)',
+                          fontWeight: 600,
+                          fontSize: '14px',
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          backgroundColor: 'var(--bg-app)',
+                          color: 'var(--text-muted)',
+                          border: '1px solid var(--border-card)',
+                        }}
+                      >
+                        {req.category}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <select
+                        value={req.priority}
+                        onChange={(e) => handleUpdateRequirement(idx, 'priority', e.target.value as Priority)}
+                        style={{
+                          backgroundColor: 'var(--bg-surface)',
+                          color: req.priority === 'must' ? 'var(--accent-rose)' : 'var(--accent-emerald)',
+                          border: '1px solid var(--border-card)',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '4px 8px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                        }}
+                      >
+                        <option value="must">MUST HAVE (Core)</option>
+                        <option value="nice">NICE TO HAVE (Learning/Bonus)</option>
+                      </select>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteRequirement(idx)}
+                        style={{
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          color: 'var(--accent-rose)',
+                          fontSize: '16px',
+                          padding: '4px 8px',
+                          cursor: 'pointer',
+                        }}
+                        title="Remove requirement"
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <select
-                      value={req.priority}
-                      onChange={(e) => handleUpdateRequirement(idx, 'priority', e.target.value as Priority)}
-                      style={{
-                        backgroundColor: 'var(--bg-surface)',
-                        color: req.priority === 'must' ? 'var(--accent-rose)' : 'var(--accent-emerald)',
-                        border: '1px solid var(--border-card)',
-                        borderRadius: 'var(--radius-sm)',
-                        padding: '4px 8px',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                      }}
-                    >
-                      <option value="must">MUST HAVE</option>
-                      <option value="nice">NICE TO HAVE</option>
-                    </select>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteRequirement(idx)}
-                      style={{
-                        backgroundColor: 'transparent',
-                        border: 'none',
-                        color: 'var(--accent-rose)',
-                        fontSize: '16px',
-                        padding: '4px 8px',
-                      }}
-                      title="Remove requirement"
-                    >
-                      ✕
-                    </button>
-                  </div>
+                  {req.source_sentence && (
+                    <div style={{ fontSize: '11px', color: 'var(--text-dim)', fontStyle: 'italic', paddingLeft: '24px' }}>
+                      Evidence: &ldquo;{req.source_sentence}&rdquo;
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

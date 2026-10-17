@@ -21,6 +21,10 @@ def is_safe_url(url: str) -> Tuple[bool, Optional[str]]:
     if parsed.scheme.lower() not in ("http", "https"):
         return False, "Only HTTP and HTTPS URLs are permitted"
 
+    # Reject credentials embedded in URLs (e.g., http://user:pass@host)
+    if parsed.username or parsed.password:
+        return False, "URLs with embedded credentials are not permitted"
+
     hostname = parsed.hostname
     if not hostname:
         return False, "URL must include a valid hostname"
@@ -57,15 +61,24 @@ def is_safe_url(url: str) -> Tuple[bool, Optional[str]]:
 
 def clean_html_to_text(raw_html: str) -> str:
     """Safely extracts text content from HTML without executing any scripts
-
     or relying on external C-bindings. Removes script, style, nav, footer,
-    and returns normalized visible text.
+    aside, svg, and returns normalized visible text.
     """
-    # 1. Remove script, style, head, noscript, and iframe tags entirely
-    cleaned = re.sub(r"<(script|style|head|noscript|iframe)[^>]*>.*?</\1>", " ", raw_html, flags=re.DOTALL | re.IGNORECASE)
+    # 1. Remove script, style, head, noscript, iframe, nav, footer, aside, svg, button, form
+    cleaned = re.sub(
+        r"<(script|style|head|noscript|iframe|nav|footer|aside|svg|button|form)[^>]*>.*?</\1>",
+        " ",
+        raw_html,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
 
     # 2. Convert common block breaks to newlines before stripping tags
-    cleaned = re.sub(r"<(p|br|div|li|h1|h2|h3|h4|h5|h6|tr|section|article)[^>]*>", "\n", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(
+        r"<(p|br|div|li|h1|h2|h3|h4|h5|h6|tr|section|article|header|main)[^>]*>",
+        "\n",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
 
     # 3. Strip all remaining tags
     cleaned = re.sub(r"<[^>]+>", " ", cleaned)
@@ -87,9 +100,11 @@ class JobFetchError(Exception):
         super().__init__(message)
 
 
+KNOWN_AUTH_SITES = ("linkedin.com", "naukri.com", "internshala.com", "indeed.com", "glassdoor.com")
+
+
 async def fetch_job_page(url: str, max_bytes: int = 2_000_000, timeout_s: float = 12.0) -> str:
     """Safely fetches a job posting web page with timeout, max byte cap,
-
     redirect safety validation, and safe text extraction.
     """
     # Initial URL validation
@@ -97,15 +112,19 @@ async def fetch_job_page(url: str, max_bytes: int = 2_000_000, timeout_s: float 
     if not is_safe:
         raise JobFetchError("UNSAFE_URL", f"Security rejection: {reason}", retryable=False)
 
+    parsed = urlparse(url)
+    host_lower = (parsed.hostname or "").lower()
+    site_hint = ""
+    if any(site in host_lower for site in KNOWN_AUTH_SITES):
+        site_hint = " (Job platforms such as LinkedIn, Naukri, or Internshala often require authentication or block automated scrapers; pasting the description text directly is recommended.)"
+
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 (DevProof Bot)",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 (DevProof Job Importer/2.0)",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.7",
         "Accept-Language": "en-US,en;q=0.9",
     }
 
     current_url = url
-    total_bytes = 0
-    content_chunks = []
 
     # Custom redirect loop to validate each hop against SSRF
     async with httpx.AsyncClient(timeout=timeout_s, follow_redirects=False) as client:
@@ -113,7 +132,7 @@ async def fetch_job_page(url: str, max_bytes: int = 2_000_000, timeout_s: float 
             try:
                 response = await client.get(current_url, headers=headers)
             except httpx.TimeoutException:
-                raise JobFetchError("FETCH_TIMEOUT", "Request to job posting timed out.", retryable=True)
+                raise JobFetchError("FETCH_TIMEOUT", f"Request to job posting timed out ({timeout_s}s).", retryable=True)
             except httpx.RequestError as e:
                 raise JobFetchError("FETCH_FAILED", f"Network error fetching job posting: {str(e)}", retryable=True)
 
@@ -137,17 +156,17 @@ async def fetch_job_page(url: str, max_bytes: int = 2_000_000, timeout_s: float 
 
             # Non-redirect response reached
             if response.status_code >= 400:
-                if response.status_code == 403:
+                if response.status_code in (401, 403):
                     raise JobFetchError(
                         "ANTI_BOT_BLOCKED",
-                        "The job posting site returned 403 Forbidden (anti-bot or protected page). Please use pasted job description text.",
+                        f"The job posting site returned HTTP {response.status_code} (anti-bot or access restricted).{site_hint} Please use the pasted job description text mode.",
                         retryable=False,
                     )
                 if response.status_code == 404:
-                    raise JobFetchError("JOB_NOT_FOUND", "The job posting page was not found (404).", retryable=False)
+                    raise JobFetchError("JOB_NOT_FOUND", "The job posting page was not found (HTTP 404).", retryable=False)
                 raise JobFetchError(
                     f"HTTP_{response.status_code}",
-                    f"Failed to fetch job posting (HTTP {response.status_code}).",
+                    f"Failed to fetch job posting (HTTP {response.status_code}).{site_hint}",
                     retryable=response.status_code in (408, 429, 500, 502, 503, 504),
                 )
 
@@ -175,7 +194,7 @@ async def fetch_job_page(url: str, max_bytes: int = 2_000_000, timeout_s: float 
             if len(cleaned_text.strip()) < 50:
                 raise JobFetchError(
                     "EMPTY_JOB_CONTENT",
-                    "Fetched job page contained insufficient readable text. Please paste the job description text directly.",
+                    f"Fetched job page contained insufficient readable text ({len(cleaned_text.strip())} characters).{site_hint} Please paste the job description text directly.",
                     retryable=False,
                 )
 

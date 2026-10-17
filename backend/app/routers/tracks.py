@@ -275,11 +275,11 @@ def _serialize_analysis(
 
 
 @router.post("/{track_id}/analyze", response_model=AnalysisDetail)
-async def analyze_track(track_id: int, db: Session = Depends(get_db)) -> AnalysisDetail:
+async def analyze_track(track_id: int, force: bool = False, db: Session = Depends(get_db)) -> AnalysisDetail:
     """Executes Phase 3 real assessment on the target repository at pinned commit SHA:
 
     1. Resolves track, confirmed job requirements, and linked repository
-    2. Enforces idempotency on (track_id, commit_sha)
+    2. Enforces idempotency on (track_id, commit_sha), with explicit re-evaluation support when force=True
     3. Fetches analyzable file tree and blob contents pinned at exact commit SHA
     4. Runs deterministic detectors across Python backend scope
     5. Skeptic Verifier independently checks line spans and content matching
@@ -320,9 +320,14 @@ async def analyze_track(track_id: int, db: Session = Depends(get_db)) -> Analysi
 
     # Idempotency check: (track_id, commit_sha)
     existing_analysis = db.query(Analysis).filter_by(track_id=track.id, commit_sha=commit_sha).first()
-    if existing_analysis and existing_analysis.status == "complete":
-        assessments = db.query(AssessmentModel).filter_by(analysis_id=existing_analysis.id).all()
-        return _serialize_analysis(existing_analysis, assessments)
+    if existing_analysis:
+        if force:
+            db.delete(existing_analysis)
+            db.commit()
+            existing_analysis = None
+        elif existing_analysis.status == "complete":
+            assessments = db.query(AssessmentModel).filter_by(analysis_id=existing_analysis.id).all()
+            return _serialize_analysis(existing_analysis, assessments)
 
     # Initialize new Analysis record
     analysis = Analysis(
@@ -345,6 +350,8 @@ async def analyze_track(track_id: int, db: Session = Depends(get_db)) -> Analysi
 
         # 2. Fetch file contents for analyzable files (bounded, cached)
         files_map = {}
+        files_by_sha = {}
+        seen_shas_in_batch = set()
         for f in analyzable_files:
             file_path = f["path"]
             blob_sha = f.get("sha", "")
@@ -352,11 +359,17 @@ async def analyze_track(track_id: int, db: Session = Depends(get_db)) -> Analysi
             cached = db.query(FileCache).filter_by(blob_sha=blob_sha).first()
             if cached:
                 files_map[file_path] = cached.content
+                files_by_sha[blob_sha] = cached.content
+            elif blob_sha in files_by_sha:
+                files_map[file_path] = files_by_sha[blob_sha]
             else:
                 try:
                     content = await client.get_blob_content(repo.owner, repo.name, blob_sha)
-                    db.merge(FileCache(blob_sha=blob_sha, path=file_path, content=content))
                     files_map[file_path] = content
+                    files_by_sha[blob_sha] = content
+                    if blob_sha and blob_sha not in seen_shas_in_batch:
+                        db.merge(FileCache(blob_sha=blob_sha, path=file_path, content=content))
+                        seen_shas_in_batch.add(blob_sha)
                 except Exception:
                     # Individual file fetch failure: record limitation without breaking whole run
                     continue
