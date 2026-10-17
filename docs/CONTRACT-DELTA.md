@@ -105,7 +105,20 @@ class Track(BaseModel):
     job: JobDraft | None = None
     repo: Repo | None = None
     latest_analysis: Analysis | None = None
+### 1.4 Repository Connect & Evidence Retrieval (Phase BE-1)
+```python
+class RepoConnectRequest(BaseModel):
+    repo_url: str
+    branch: str | None = None
+
+class EvidenceFile(BaseModel):
+    path: str
+    sha: str
+    content: str
+    line_start: int
+    line_end: int
 ```
+And `Repo` schema adds optional `head_sha: str | None = None` and `scope: ScopeInfo | None = None`.
 
 ---
 
@@ -145,7 +158,6 @@ class Track(BaseModel):
 - **Error Response**: `ErrorEnvelope` with codes `USER_NOT_FOUND`, `RATE_LIMITED`.
 
 ### 3.3 `GET /api/jobs/{id}/claims-matrix`
-- **Path Parameter**: `id: str` (Job ID)
 - **Response**: `ClaimsMatrix`
 - **Error Response**: `ErrorEnvelope` with code `JOB_NOT_FOUND`.
 
@@ -153,3 +165,13 @@ class Track(BaseModel):
 - **Request Body**: `TrackCreate { job_id, repo_url, branch, resume_id }`
 - **Response**: `Track`
 - **Error Response**: `ErrorEnvelope` with codes `JOB_NOT_FOUND`, `REPO_INVALID`.
+
+### 3.5 `POST /api/repos/connect`
+- **Request Body**: `RepoConnectRequest { repo_url, branch }`
+- **Response**: `Repo` (with `head_sha` and `scope` preview)
+- **Error Response**: `ErrorEnvelope` with codes `REPO_NOT_FOUND`, `REPO_PRIVATE`, `RATE_LIMITED`.
+
+### 3.6 `GET /api/evidence/{id}/file`
+- **Path Parameter**: `id: str` (Evidence ID)
+- **Response**: `EvidenceFile { path, sha, content, line_start, line_end }`
+- **Error Response**: `ErrorEnvelope` with code `EVIDENCE_NOT_FOUND`.

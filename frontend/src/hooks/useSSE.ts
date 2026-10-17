@@ -20,7 +20,7 @@ export interface UseSSEResult {
 }
 
 export function useSSE(options: UseSSEOptions = {}): UseSSEResult {
-  const { trackId = 'track_demo', fixtureMode = true, onAnalysisComplete } = options;
+  const { trackId = '', fixtureMode = false, onAnalysisComplete } = options;
 
   const [isConnected, setIsConnected] = useState<boolean>(true);
   const [isReassessing, setIsReassessing] = useState<boolean>(false);
@@ -136,7 +136,7 @@ export function useSSE(options: UseSSEOptions = {}): UseSSEResult {
 
   // Real backend SSE connection if not in fixture mode
   useEffect(() => {
-    if (fixtureMode) return;
+    if (fixtureMode || !trackId) return;
 
     let eventSource: EventSource | null = null;
     try {

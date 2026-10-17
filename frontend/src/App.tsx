@@ -8,14 +8,16 @@ import { RepositoriesView } from './components/RepositoriesView';
 import { AgentActivityView } from './components/AgentActivityView';
 import { CompareView } from './components/CompareView';
 import { DevComponentsShowcase } from './components/DevComponentsShowcase';
+import { ClaimsMatrixView } from './components/ClaimsMatrixView';
 import type { JobDraft, TrackOpportunity, RecentChange, NextAction } from './types';
-import trackC2 from '../../docs/fixtures/track_assessment_c2.json';
+import { DEV_FIXTURES } from './lib/devFixtures';
+import { api, FORCE_FIXTURES } from './lib/api';
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState<string>(
     typeof window !== 'undefined' ? window.location.pathname || '/' : '/'
   );
-  const [selectedTrackId, setSelectedTrackId] = useState<string>('track_demo');
+  const [selectedTrackId, setSelectedTrackId] = useState<string>('');
 
   // Handle browser back/forward buttons
   useEffect(() => {
@@ -34,10 +36,64 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
-  // Tracked Opportunities state initialized with canonical C2 fixture (6 skills)
-  const [opportunities, setOpportunities] = useState<TrackOpportunity[]>([
-    trackC2 as unknown as TrackOpportunity,
-  ]);
+  // Tracked Opportunities state (loads real tracks from SQLite DB; fixture only if VITE_USE_FIXTURES=1)
+  const [opportunities, setOpportunities] = useState<TrackOpportunity[]>(
+    FORCE_FIXTURES ? [DEV_FIXTURES.trackC2 as unknown as TrackOpportunity] : []
+  );
+
+  const [healthInfo, setHealthInfo] = useState<{
+    watcherMode: 'webhook' | 'polling';
+    nextPollInSeconds: number;
+    llmMode: 'ai_on' | 'deterministic';
+    rateLimitRemaining: number;
+    mode: 'real' | 'fixtures';
+  }>({
+    watcherMode: 'polling',
+    nextPollInSeconds: 15,
+    llmMode: 'ai_on',
+    rateLimitRemaining: 5000,
+    mode: FORCE_FIXTURES ? 'fixtures' : 'real',
+  });
+
+  // Load real health and real tracks on mount
+  useEffect(() => {
+    let isMounted = true;
+    async function loadData() {
+      try {
+        const health = await api.getHealth();
+        if (isMounted && health) {
+          setHealthInfo({
+            watcherMode: health.watcher === 'webhook' ? 'webhook' : 'polling',
+            nextPollInSeconds: health.next_poll_in_s || 15,
+            llmMode: health.llm === 'disabled' ? 'deterministic' : 'ai_on',
+            rateLimitRemaining: health.rate_remaining ?? 5000,
+            mode: health.mode === 'fixtures' ? 'fixtures' : 'real',
+          });
+        }
+      } catch (err) {
+        console.warn('Could not fetch health from backend:', err);
+      }
+
+      if (!FORCE_FIXTURES) {
+        try {
+          const realTracks = await api.getTracks();
+          if (isMounted && realTracks) {
+            setOpportunities(realTracks);
+            if (realTracks.length > 0) {
+              setSelectedTrackId(realTracks[0].id);
+            }
+          }
+        } catch (err) {
+          console.warn('Could not fetch real tracks from backend:', err);
+        }
+      }
+    }
+
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Recent changes feed
   const recentChanges: RecentChange[] = [
@@ -95,7 +151,31 @@ export default function App() {
     },
   ];
 
-  const handleWizardComplete = (job: JobDraft, repoUrl: string) => {
+  const handleWizardComplete = async (job: JobDraft, repoUrl: string) => {
+    if (!FORCE_FIXTURES) {
+      try {
+        const savedJob = await api.saveJob(job);
+        const trackResp = await api.createTrack({
+          jobId: String(savedJob.id || job.id || ''),
+          repoUrl,
+        });
+        try {
+          await api.checkNow(trackResp.id);
+        } catch {
+          // ignore if check offline
+        }
+        const refreshed = await api.getTracks();
+        setOpportunities(refreshed);
+        setSelectedTrackId(trackResp.id);
+        navigate(`/tracks/${trackResp.id}`);
+        return;
+      } catch (err: any) {
+        console.error('Failed to create track in backend:', err);
+        alert(`Failed to save job and create track: ${err.message || 'Unknown error'}`);
+        return;
+      }
+    }
+
     const newOpportunity: TrackOpportunity = {
       id: `track_${Date.now()}`,
       job,
@@ -150,6 +230,18 @@ export default function App() {
         <AddJobWizard
           onComplete={handleWizardComplete}
           onCancel={() => navigate('/')}
+          onViewClaimsMatrix={(jobId) => navigate(`/jobs/${jobId}/claims`)}
+        />
+      );
+    }
+    if (currentPath.startsWith('/jobs/') && currentPath.includes('/claims')) {
+      const match = currentPath.match(/^\/jobs\/([^/]+)\/claims/);
+      const jobId = match ? match[1] : 'job_devproof_demo';
+      return (
+        <ClaimsMatrixView
+          jobId={jobId}
+          onBackToDashboard={() => navigate('/')}
+          onProceedToAssessment={(trackId) => navigate(`/tracks/${trackId}/skills/req_sql_database`)}
         />
       );
     }
@@ -170,22 +262,29 @@ export default function App() {
     if (currentPath.includes('/changes') || currentPath.includes('/compare')) {
       return (
         <CompareView
-          onBack={() => navigate(`/tracks/${activeTrack?.id}`)}
-          onViewReport={() => navigate(`/tracks/${activeTrack?.id}`)}
+          trackId={activeTrack?.id}
+          repoOwner={activeTrack?.repo?.owner}
+          repoName={activeTrack?.repo?.name}
+          onBack={() => navigate(activeTrack?.id ? `/tracks/${activeTrack.id}` : '/')}
+          onViewReport={() => navigate(activeTrack?.id ? `/tracks/${activeTrack.id}` : '/')}
         />
       );
     }
-    if (currentPath.startsWith('/tracks/')) {
+    if (currentPath.startsWith('/tracks')) {
       const match = currentPath.match(/^\/tracks\/([^/]+)(?:\/skills\/([^/]+))?/);
-      const trackId = match ? match[1] : activeTrack?.id || 'track_demo';
-      const reqId = match && match[2] ? match[2] : 'req_sql_database';
+      const urlTrackId = match ? match[1] : '';
+      const targetTrack = opportunities.find((o) => o.id === urlTrackId) || activeTrack;
+      const firstReqId = targetTrack?.job?.requirements?.[0]?.id || 'req_sql_database';
+      const reqId = match && match[2] ? match[2] : firstReqId;
 
       return (
         <ResultsView
-          track={activeTrack}
+          track={targetTrack}
           requirementId={reqId}
           onBackToDashboard={() => navigate('/')}
-          onSelectSkill={(newReqId) => navigate(`/tracks/${trackId}/skills/${newReqId}`)}
+          onSelectSkill={(newReqId) =>
+            navigate(targetTrack?.id ? `/tracks/${targetTrack.id}/skills/${newReqId}` : `/tracks/skills/${newReqId}`)
+          }
         />
       );
     }
@@ -235,10 +334,11 @@ export default function App() {
       >
         {/* Top Header Bar */}
         <TopBar
-          watcherMode="webhook"
-          nextPollInSeconds={15}
-          llmMode="ai_on"
-          rateLimitRemaining={4982}
+          watcherMode={healthInfo.watcherMode}
+          nextPollInSeconds={healthInfo.nextPollInSeconds}
+          llmMode={healthInfo.llmMode}
+          rateLimitRemaining={healthInfo.rateLimitRemaining}
+          isFixtureMode={FORCE_FIXTURES || healthInfo.mode === 'fixtures'}
           onNavigate={navigate}
         />
 

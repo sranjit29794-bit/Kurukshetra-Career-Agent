@@ -15,20 +15,73 @@ import { StatusPill } from './StatusPill';
 import { SkillIconTile } from './SkillIconTile';
 import { ShaChip } from './ShaChip';
 import { CodeViewerDrawer } from './CodeViewerDrawer';
-import diffData from '../../../docs/fixtures/diff_c0_c2.json';
-import timelineData from '../../../docs/fixtures/analyses_timeline.json';
+import { api, FORCE_FIXTURES } from '../lib/api';
+import { DEV_FIXTURES } from '../lib/devFixtures';
 import type { Status } from '../types';
 
 export interface CompareViewProps {
   onBack?: () => void;
   onViewReport?: () => void;
   onViewSkillDetail?: (reqId: string) => void;
+  trackId?: string;
+  repoOwner?: string;
+  repoName?: string;
 }
 
 export const CompareView: React.FC<CompareViewProps> = ({
   onBack,
   onViewSkillDetail: _onViewSkillDetail,
+  trackId,
+  repoOwner = '',
+  repoName = '',
 }) => {
+  const [diffData, setDiffData] = useState<any>(
+    FORCE_FIXTURES
+      ? DEV_FIXTURES.diff
+      : {
+          from_sha: '',
+          to_sha: '',
+          commit_message: '',
+          files_changed: [],
+          items: [],
+        }
+  );
+  const [timelineData, setTimelineData] = useState<any[]>(
+    FORCE_FIXTURES ? (DEV_FIXTURES.timeline as any[]) : []
+  );
+  const [_loading, setLoading] = useState<boolean>(!FORCE_FIXTURES);
+
+  React.useEffect(() => {
+    if (FORCE_FIXTURES || !trackId) return;
+    const currentTrackId = trackId;
+    let isMounted = true;
+    async function fetchHistory() {
+      try {
+        setLoading(true);
+        const [diff, timeline] = await Promise.all([
+          api.getDiff(currentTrackId).catch(() => ({
+            from_sha: '',
+            to_sha: '',
+            commit_message: 'No diff available',
+            files_changed: [],
+            items: [],
+          })),
+          api.getTimeline(currentTrackId).catch(() => []),
+        ]);
+        if (isMounted) {
+          if (diff) setDiffData(diff);
+          if (timeline && timeline.length > 0) setTimelineData(timeline);
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    fetchHistory();
+    return () => {
+      isMounted = false;
+    };
+  }, [trackId]);
+
   const [activeTab, setActiveTab] = useState<'compare' | 'timeline'>('compare');
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({
     req_sql_database: true,
@@ -260,7 +313,7 @@ export const CompareView: React.FC<CompareViewProps> = ({
 
             {/* Table Rows */}
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {diffData.items.map((item) => {
+              {diffData.items.map((item: any) => {
                 const isImproved = item.change === 'improved';
                 const isExpanded = !!expandedRows[item.requirement_id];
                 const isUnchanged = item.change === 'unchanged';
@@ -394,7 +447,7 @@ export const CompareView: React.FC<CompareViewProps> = ({
                               + Evidence Added ({item.evidence_added.length} signals verified):
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              {item.evidence_added.map((ev) => (
+                              {item.evidence_added.map((ev: any) => (
                                 <div
                                   key={ev.id}
                                   style={{
@@ -578,7 +631,7 @@ export const CompareView: React.FC<CompareViewProps> = ({
 
                 {/* Transition Summary Badges */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
-                  {analysis.transitions.map((t, tIdx) => {
+                  {analysis.transitions.map((t: any, tIdx: number) => {
                     const isImproved = t.change === 'improved';
                     return (
                       <div
@@ -651,8 +704,8 @@ export const CompareView: React.FC<CompareViewProps> = ({
         filePath={drawerCitation.filePath}
         sha={diffData.to_sha}
         highlightRange={{ start: drawerCitation.start, end: drawerCitation.end }}
-        repoOwner="rohan-student"
-        repoName="student-api"
+        repoOwner={repoOwner}
+        repoName={repoName}
       />
     </div>
   );

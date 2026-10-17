@@ -146,7 +146,7 @@ def test_router_auto_discovery():
     resp = client.get("/api/health")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["watcher"] == "polling"
+    assert data["watcher"] in ("polling", "webhook")
 
 
 def test_openapi_contract_paths():

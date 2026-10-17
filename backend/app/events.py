@@ -6,6 +6,7 @@ Reference: docs/BRAIN.md (§5, §6, §7.1, §13).
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from typing import Any
 
 
@@ -49,11 +50,33 @@ class EventBus:
 
         for queue, filter_track_id in subscribers:
             if filter_track_id is None or filter_track_id == track_id:
-                try:
+                with contextlib.suppress(asyncio.QueueFull):
                     queue.put_nowait(payload)
-                except asyncio.QueueFull:
-                    # Drop slow subscriber message to avoid blocking pipeline
-                    pass
+
+    def emit(
+        self,
+        agent: str,
+        message: str,
+        level: str = "info",
+        track_id: str | None = None,
+        analysis_id: str | None = None,
+    ) -> None:
+        """Enqueue an agent activity event to subscribers synchronously."""
+        payload = {
+            "event": "agent_event",
+            "data": {
+                "agent": agent,
+                "level": level,
+                "message": message,
+                "track_id": track_id or "",
+                "analysis_id": analysis_id,
+            },
+            "track_id": track_id,
+        }
+        for queue, filter_track_id in list(self._subscribers):
+            if filter_track_id is None or filter_track_id == track_id:
+                with contextlib.suppress(asyncio.QueueFull):
+                    queue.put_nowait(payload)
 
 
 event_bus = EventBus()

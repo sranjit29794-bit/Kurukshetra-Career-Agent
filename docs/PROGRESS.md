@@ -1,0 +1,114 @@
+# DevProof Execution Progress
+
+This document tracks progress across all phases according to `docs/PLAN-5H.md` and user instructions.
+
+## Phase Log
+
+### Phase R0
+- **Status:** COMPLETED
+- **Files Touched:** `backend/app/schemas.py`, `backend/app/models.py`, `backend/app/db.py`, `backend/app/engine_interface.py`, `backend/app/engine_stub.py`, `backend/app/main.py`, `backend/app/routers/*`, `docs/CONTRACT-DELTA.md`, `docs/fixtures/resume_draft.json`, `docs/fixtures/claims_matrix.json`, `backend/scripts/smoke_github.py`, `.env.example`
+- **Test Gate:** PASS (Contracts and stubs validated, uvicorn boots with lazy DB)
+- **Libraries Looked Up:** sqlalchemy, pydantic, fastapi
+- **Commit Hash:** `5c5268e`, `c8e5549`, `e3d8a39`
+- **Open Issues:** None
+
+### Phase BE-1: Backend Foundation
+- **Status:** COMPLETED
+- **Files Touched:** `backend/app/github/client.py`, `backend/app/github/files.py`, `backend/app/github/__init__.py`, `backend/app/agents/repo_scout.py`, `backend/app/agents/__init__.py`, `backend/app/routers/health.py`, `backend/app/routers/repos.py`, `backend/app/routers/github_users.py`, `backend/app/routers/tracks.py`, `backend/app/routers/evidence.py`, `backend/app/schemas.py`, `backend/app/main.py`, `backend/tests/backend/test_be1.py`, `docs/CONTRACT-DELTA.md`, `docs/STATE.md`, `docs/HUMAN_TODO.md`
+- **Test Gate:** PASS (25 tests passed: ruff check clean, ruff format clean, invariant scan clean)
+- **Libraries Looked Up:** tenacity, httpx, respx, sqlalchemy
+- **Commit Hash:** `c8e345c`
+- **Open Issues:** None
+
+### Phase EN-1: Detectors & Status Rules
+- **Status:** COMPLETED
+- **Files Touched:** `backend/app/detectors/base.py`, `backend/app/detectors/weak_signals.py`, `backend/app/detectors/python_lang.py`, `backend/app/detectors/rest_api.py`, `backend/app/detectors/sql.py`, `backend/app/detectors/testing.py`, `backend/app/detectors/deployment.py`, `backend/app/detectors/generic_keyword.py`, `backend/app/detectors/registry.py`, `backend/app/detectors/__init__.py`, `backend/app/services/status_rules.py`, `backend/app/engine_cli.py`, `backend/tests/fixtures/loader.py`, `backend/tests/fixtures/repos/*`, `backend/tests/engine/test_detectors.py`, `backend/tests/engine/test_status_rules.py`, `backend/tests/engine/test_fixtures_regression.py`, `pytest.ini`, `ruff.toml`
+- **Test Gate:** PASS (63 tests passed across backend/tests, ruff check clean, ruff format clean, invariant scan clean)
+- **Libraries Looked Up:** ast, hashlib
+- **Commit Hash:** `6578e1f`
+- **Open Issues:** None
+
+### Phase IN-1: LLM Layer
+- **Status:** COMPLETED
+- **Files Touched:** `backend/app/config.py`, `backend/app/llm/client.py`, `backend/app/llm/prompts.py`, `backend/app/llm/fallback.py`, `backend/app/llm/__init__.py`, `backend/scripts/smoke_llm.py`, `backend/tests/ingest/test_llm.py`
+- **Test Gate:** PASS (76 tests passed across backend/tests, ruff check clean, ruff format clean, invariant scan clean)
+- **Libraries Looked Up:** openai (AsyncOpenAI), tenacity (AsyncRetrying)
+- **Commit Hash:** `301cb3d`
+- **Open Issues:** None
+
+### Phase FE-1: Frontend Setup & Wizard Refactor
+- **Status:** COMPLETED
+- **Files Touched:** `frontend/src/types.ts`, `frontend/src/components/AddJobWizard.tsx`, `frontend/src/components/ClaimsMatrixView.tsx`, `frontend/src/App.tsx`
+- **Test Gate:** PASS (oxlint 0 errors 0 warnings, tsc -b clean, vite build successful)
+- **Libraries Looked Up:** None (React 19, TypeScript 5.8)
+- **Commit Hash:** `3465fb3`
+- **Open Issues:** None
+
+### Phase BE-2: Orchestrator, Watcher, Diff & Webhooks
+- **Status:** COMPLETED
+- **Files Touched:** `backend/app/agents/orchestrator.py`, `backend/app/agents/change_sentinel.py`, `backend/app/services/impact_map.py`, `backend/app/services/diff_builder.py`, `backend/app/routers/webhooks.py`, `backend/app/routers/tracks.py`, `backend/app/agents/repo_scout.py`, `backend/app/events.py`, `backend/tests/backend/test_be2.py`
+- **Test Gate:** PASS (91 tests passed across backend/tests, ruff check clean, ruff format clean, invariant scan clean)
+- **Libraries Looked Up:** hmac, hashlib, sse_starlette
+- **Commit Hash:** `f3e62e1`
+- **Open Issues:** None
+
+### Phase EN-2: Evidence Analyst, Verifier, Coach & Facade
+- **Status:** COMPLETED
+- **Files Touched:** `backend/app/agents/evidence_judge.py`, `backend/app/agents/evidence_verifier.py`, `backend/app/agents/coach.py`, `backend/app/services/job_extractor.py`, `backend/app/engine_facade.py`, `backend/tests/engine/test_adversarial.py`, `backend/tests/engine/test_en2.py`
+- **Test Gate:** PASS (102 tests passed across backend/tests, ruff check clean, ruff format clean, invariant scan clean)
+- **Libraries Looked Up:** None
+- **Commit Hash:** `2244014`
+- **Open Issues:** None
+
+### Phase IN-2: Job Ingestion & Claims Matrix
+- **Status:** COMPLETED
+- **Files Touched:** `backend/app/agents/job_ingest.py`, `backend/app/routers/jobs.py`, `backend/app/main.py`, `backend/tests/ingest/test_job_ingest.py`
+- **Test Gate:** PASS (110 tests passed across backend/tests, ruff check clean, ruff format clean, invariant scan clean)
+- **Libraries Looked Up:** None (httpx, html, re)
+- **Commit Hash:** `4606aae`
+- **Open Issues:** None
+
+### Phase IN-3: Resume Ingestion & Claims Extraction
+- **Status:** COMPLETED
+- **Files Touched:** `backend/app/agents/resume_ingest.py`, `backend/app/routers/resume.py`, `backend/tests/ingest/test_resume_ingest.py`
+- **Test Gate:** PASS (117 tests passed across backend/tests, ruff check clean, ruff format clean, invariant scan clean)
+- **Libraries Looked Up:** pypdf
+- **Commit Hash:** `100c7fa`
+- **Open Issues:** None
+
+### Phase FE-2: Frontend Wiring, Unified API Layer & Error Envelope
+- **Status:** COMPLETED
+- **Files Touched:** `frontend/src/lib/api.ts`, `frontend/src/types.ts`, `frontend/vite.config.ts`, `.gitignore`, `docs/openapi.json`
+- **Test Gate:** PASS (oxlint 0 errors 0 warnings, tsc -b clean, vite build passed with manualChunks code splitting)
+- **Libraries Looked Up:** None
+- **Commit Hash:** `7bb7c73`
+- **Open Issues:** None
+
+### Phase 9: Integration (Real Stack Flow)
+- **Status:** COMPLETED
+- **Files Touched:** `backend/tests/integration/test_full_stack_flow.py`, `backend/app/routers/tracks.py`, `backend/app/agents/orchestrator.py`, `backend/tests/test_r0_contract.py`
+- **Test Gate:** PASS (118 tests passed across backend/tests, ruff check clean, ruff format clean, all 9 integration steps passed: job ingest, resume discovery, C0 initial assess, C1 signed push no-op, C2 push SQL & testing flip, CI check run upgrade, claims matrix, diff builder)
+- **Libraries Looked Up:** None
+- **Commit Hash:** `4c1aec6`
+- **Open Issues:** None
+
+### Phase 10: Hardening & Edge-Case Battery
+- **Status:** COMPLETED
+- **Files Touched:** `backend/app/agents/evidence_judge.py`, `backend/tests/integration/test_hardening_edge_cases.py`
+- **Test Gate:** PASS (127 tests passed across backend/tests, ruff check clean, ruff format clean, all 9 edge cases passed: LLM down fallback to deterministic, LLM malformed JSON retry/error, GitHub 403/429 rate limit envelope, GitHub 5xx upstream envelope, upstream 404 job posting envelope, duplicate webhook dedupe idempotency, unrelated/docs commit impact empty, non-Python repo handling, secret hygiene scan)
+- **Libraries Looked Up:** None
+- **Commit Hash:** `eacbc39`
+- **Open Issues:** None
+
+### Phase 11: Documentation & Rehearsal Preparation
+- **Status:** COMPLETED
+- **Files Touched:** `README.md`, `docs/demo/DEMO_SCRIPT.md`, `docs/HUMAN_TODO.md`
+- **Test Gate:** PASS (Frontend oxlint clean, tsc -b clean, vite build passed; backend 127 tests passed; full demo integration flow executed 3 times including once with LLM_ENABLED=false, 0 console errors)
+- **Libraries Looked Up:** None
+- **Commit Hash:** `bd76e78`
+- **Open Issues:** None
+
+---
+
+
+

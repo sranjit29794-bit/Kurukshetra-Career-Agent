@@ -4,12 +4,15 @@ import { WatcherChip } from './WatcherChip';
 import { LlmChip } from './LlmChip';
 import { RateLimitChip } from './RateLimitChip';
 
+import { FORCE_FIXTURES } from '../lib/api';
+
 export interface TopBarProps {
   watcherMode?: 'webhook' | 'polling';
   nextPollInSeconds?: number;
   llmMode?: 'ai_on' | 'deterministic';
   rateLimitRemaining?: number;
   rateLimitTotal?: number;
+  isFixtureMode?: boolean;
   onNavigate?: (path: string) => void;
   className?: string;
 }
@@ -20,6 +23,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   llmMode = 'ai_on',
   rateLimitRemaining = 4982,
   rateLimitTotal = 5000,
+  isFixtureMode = FORCE_FIXTURES,
   onNavigate,
   className = '',
 }) => {
@@ -62,6 +66,36 @@ export const TopBar: React.FC<TopBarProps> = ({
           <Sliders size={12} />
           <span>/dev/components</span>
         </button>
+      )}
+
+      {/* Fixture Mode Indicator Chip */}
+      {isFixtureMode && (
+        <div
+          data-testid="fixture-mode-chip"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '3px 9px',
+            borderRadius: '12px',
+            backgroundColor: 'rgba(245, 158, 11, 0.15)',
+            border: '1px solid rgba(245, 158, 11, 0.4)',
+            color: '#F59E0B',
+            fontSize: '11px',
+            fontWeight: 600,
+            letterSpacing: '0.02em',
+          }}
+        >
+          <span
+            style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              backgroundColor: '#F59E0B',
+            }}
+          />
+          Fixture Mode
+        </div>
       )}
 
       {/* Watcher status */}

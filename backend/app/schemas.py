@@ -7,9 +7,9 @@ Reference: docs/BRAIN.md (§3, §9, §10, §13, §15.2).
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 # --- Enums (BRAIN §9, §10, §15.2) ---
 
@@ -209,9 +209,18 @@ class RequirementIn(BaseModel):
     position: int = 0
 
 
+class DroppedRequirement(BaseModel):
+    """A requirement dropped during validation."""
+
+    skill_key: str
+    quote: str
+    reason: str
+
+
 class JobDraft(BaseModel):
     """Structured job description with extracted requirements."""
 
+    status: str = "ok"
     id: str | None = None
     title: str
     company: str
@@ -220,9 +229,20 @@ class JobDraft(BaseModel):
     source_detail: str = ""
     raw_text: str = ""
     requirements: list[RequirementIn] = Field(default_factory=list)
+    dropped: list[DroppedRequirement] = Field(default_factory=list)
+    extraction_mode: str = "llm"  # "llm" or "Deterministic only"
     ambiguities: list[str] = Field(default_factory=list)
     confirmed: bool = False
     created_at: str | None = None
+
+
+class JobExtractNeedsPaste(BaseModel):
+    """Typed result when a job URL requires manual paste (e.g. LinkedIn or login wall)."""
+
+    status: Literal["needs_paste"] = "needs_paste"
+    reason: str = "login_required"
+    source_url: str = ""
+    message: str = "LinkedIn / external site requires login authentication. Please paste the job description text."
 
 
 # --- Resume & Claims Matrix Models (PLAN-5H §1.2, §3, R0) ---
@@ -238,18 +258,24 @@ class ResumeClaim(BaseModel):
 
 
 class RepoCandidate(BaseModel):
-    """A GitHub repository or profile discovered in a resume."""
+    """A GitHub repository or profile discovered in a resume or user listing."""
 
     url: str
     owner: str
     name: str | None = None
     kind: RepoCandidateKind = RepoCandidateKind.repo
     source: RepoCandidateSource = RepoCandidateSource.text
+    description: str | None = None
+    language: str | None = None
+    pushed_at: str | None = None
+    fork: bool = False
+    archived: bool = False
 
 
 class ResumeDraft(BaseModel):
     """Extracted resume claims and candidate repositories."""
 
+    status: str = "ok"
     resume_id: str
     filename: str
     text_chars: int
@@ -401,9 +427,18 @@ class Repo(BaseModel):
     name: str
     default_branch: str = "main"
     html_url: str
+    head_sha: str | None = None
+    scope: ScopeInfo | None = None
     webhook_id: str | None = None
     webhook_status: WebhookStatus = WebhookStatus.none
     created_at: str | None = None
+
+
+class RepoConnectRequest(BaseModel):
+    """Payload to connect a GitHub repository."""
+
+    repo_url: str = Field(validation_alias=AliasChoices("repo_url", "url"))
+    branch: str | None = None
 
 
 class Analysis(BaseModel):
@@ -488,3 +523,16 @@ class Health(BaseModel):
     rate_remaining: int
     watcher: str
     next_poll_in_s: int
+    db_path: str = ""
+    row_counts: dict[str, int] = Field(default_factory=dict)
+    mode: str = "real"
+
+
+class EvidenceFile(BaseModel):
+    """File content and range associated with an evidence citation."""
+
+    path: str
+    sha: str
+    content: str
+    line_start: int
+    line_end: int

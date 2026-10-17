@@ -24,10 +24,9 @@ import { ShaChip } from './ShaChip';
 import { SkillIconTile } from './SkillIconTile';
 import { StatCard } from './StatCard';
 import { CodeViewerDrawer } from './CodeViewerDrawer';
-import { api } from '../lib/api';
+import { api, FORCE_FIXTURES } from '../lib/api';
 import type { TrackOpportunity, VerifiedAssessment } from '../types';
-import trackC0 from '../../../docs/fixtures/track_assessment_c0.json';
-import trackC2 from '../../../docs/fixtures/track_assessment_c2.json';
+import { DEV_FIXTURES } from '../lib/devFixtures';
 
 interface ResultsViewProps {
   track?: TrackOpportunity;
@@ -37,7 +36,7 @@ interface ResultsViewProps {
 }
 
 export const ResultsView: React.FC<ResultsViewProps> = ({
-  track: _track,
+  track,
   requirementId = 'req_sql_database',
   onBackToDashboard,
   onSelectSkill: _onSelectSkill,
@@ -61,11 +60,39 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
     end: 30,
   });
 
-  // Choose active dataset based on fixtureMode
+  // Choose active dataset: prefer real track prop, else fixture in explicit fixture mode
   const activeDataset: TrackOpportunity =
-    fixtureMode === 'c0'
-      ? (trackC0 as unknown as TrackOpportunity)
-      : (trackC2 as unknown as TrackOpportunity);
+    track ||
+    (FORCE_FIXTURES
+      ? fixtureMode === 'c0'
+        ? (DEV_FIXTURES.trackC0 as unknown as TrackOpportunity)
+        : (DEV_FIXTURES.trackC2 as unknown as TrackOpportunity)
+      : ({
+          id: '',
+          job: {
+            title: 'No Active Track',
+            company: 'Unknown',
+            source_url: '',
+            source_type: 'user_provided',
+            source_detail: '',
+            raw_text: '',
+            requirements: [],
+          },
+          repo: {
+            id: '',
+            owner: '',
+            name: '',
+            default_branch: 'main',
+            html_url: '',
+            webhook_status: 'none',
+          },
+          branch: 'main',
+          last_seen_sha: '',
+          last_assessed_at: '',
+          watcher_mode: 'polling',
+          status_summary: { demonstrated: 0, partial: 0, not_demonstrated: 0, unable: 0 },
+          assessments: [],
+        } as unknown as TrackOpportunity));
 
   const selectedSkillId = requirementId || 'req_sql_database';
 
@@ -75,9 +102,27 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
     activeDataset.job.requirements.find((r) => r.id === 'req_sql_database') ||
     activeDataset.job.requirements[0];
 
+  // Fallback assessment if no assessments have been run yet
+  const fallbackAssessment: VerifiedAssessment = {
+    id: `asmt_${currentRequirement?.id || 'none'}`,
+    analysis_id: '',
+    requirement_id: currentRequirement?.id || '',
+    status: 'NOT_DEMONSTRATED',
+    strength: 'none',
+    summary: 'Not demonstrated in analyzed scope.',
+    limitation: 'No verified code evidence found in repository files analyzed.',
+    next_step: currentRequirement ? `Implement verified code patterns for ${currentRequirement.name}.` : 'Run assessment.',
+    carried_forward: false,
+    reassessed: false,
+    ignored_signals: [],
+    ai_used: false,
+    evidence: [],
+  };
+
   const baseAssessment =
     activeDataset.assessments.find((a) => a.requirement_id === currentRequirement?.id) ||
-    activeDataset.assessments[0];
+    activeDataset.assessments[0] ||
+    fallbackAssessment;
 
   // Modify assessment if in simulated "unable" mode
   const currentAssessment: VerifiedAssessment =
@@ -94,10 +139,10 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
         }
       : baseAssessment;
 
-  const currentSha = activeDataset.last_seen_sha || 'c3d4e5f67890123456789abcdef0123456789012';
+  const currentSha = activeDataset.last_seen_sha || 'HEAD';
   const shortSha = currentSha.substring(0, 7);
-  const repoOwner = activeDataset.repo.owner || 'rohan-student';
-  const repoName = activeDataset.repo.name || 'student-api';
+  const repoOwner = activeDataset.repo.owner || '';
+  const repoName = activeDataset.repo.name || '';
 
   // Handle checking commits with toast feedback
   const handleCheckCommits = async () => {
@@ -464,63 +509,62 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
 
         {/* Right Nav: Fixture Switcher + Metadata + Check for new commits button */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          {/* Fixture Test Switcher */}
-          <div
-            style={{
-              display: 'flex',
-              backgroundColor: 'var(--surface-2, #101A30)',
-              borderRadius: '8px',
-              border: '1px solid var(--border, #1A2748)',
-              padding: '2px',
-              fontSize: '11px',
-            }}
-          >
-            <button
-              onClick={() => setFixtureMode('c2')}
+          {/* Fixture Test Switcher (visible only in explicit dev fixture mode) */}
+          {FORCE_FIXTURES && (
+            <div
               style={{
-                background: fixtureMode === 'c2' ? 'var(--primary, #2F6DF6)' : 'transparent',
-                color: fixtureMode === 'c2' ? '#FFFFFF' : 'var(--muted, #8C9AB8)',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '4px 10px',
-                cursor: 'pointer',
-                fontWeight: 600,
-                transition: 'all 0.15s ease',
+                display: 'flex',
+                backgroundColor: 'var(--surface-2, #101A30)',
+                borderRadius: '8px',
+                border: '1px solid var(--border, #1A2748)',
+                padding: '2px',
+                fontSize: '11px',
               }}
             >
-              C2 (Latest)
-            </button>
-            <button
-              onClick={() => setFixtureMode('c0')}
-              style={{
-                background: fixtureMode === 'c0' ? 'var(--primary, #2F6DF6)' : 'transparent',
-                color: fixtureMode === 'c0' ? '#FFFFFF' : 'var(--muted, #8C9AB8)',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '4px 10px',
-                cursor: 'pointer',
-                fontWeight: 600,
-                transition: 'all 0.15s ease',
-              }}
-            >
-              C0 (Baseline)
-            </button>
-            <button
-              onClick={() => setFixtureMode('unable')}
-              style={{
-                background: fixtureMode === 'unable' ? '#7C3AED' : 'transparent',
-                color: fixtureMode === 'unable' ? '#FFFFFF' : 'var(--muted, #8C9AB8)',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '4px 10px',
-                cursor: 'pointer',
-                fontWeight: 600,
-                transition: 'all 0.15s ease',
-              }}
-            >
-              Unable to Assess
-            </button>
-          </div>
+              <button
+                onClick={() => setFixtureMode('c2')}
+                style={{
+                  background: fixtureMode === 'c2' ? 'var(--primary, #2F6DF6)' : 'transparent',
+                  color: fixtureMode === 'c2' ? '#FFFFFF' : 'var(--muted, #8C9AB8)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '4px 10px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                C2 (Latest)
+              </button>
+              <button
+                onClick={() => setFixtureMode('c0')}
+                style={{
+                  background: fixtureMode === 'c0' ? 'var(--primary, #2F6DF6)' : 'transparent',
+                  color: fixtureMode === 'c0' ? '#FFFFFF' : 'var(--muted, #8C9AB8)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '4px 10px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                C0 (Baseline)
+              </button>
+              <button
+                onClick={() => setFixtureMode('unable')}
+                style={{
+                  background: fixtureMode === 'unable' ? '#7C3AED' : 'transparent',
+                  color: fixtureMode === 'unable' ? '#FFFFFF' : 'var(--muted, #8C9AB8)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '4px 10px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                Unable to Assess
+              </button>
+            </div>
+          )}
 
           {/* Last Analyzed & SHA Chip */}
           <div
@@ -534,7 +578,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
           >
             <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
               <Clock size={13} />
-              Last analyzed: 2 hours ago ·
+              Last analyzed ·
             </span>
             <ShaChip sha={currentSha} size="sm" />
           </div>
@@ -558,14 +602,6 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
               cursor: isCheckingCommits ? 'not-allowed' : 'pointer',
               transition: 'all 0.15s ease',
             }}
-            onMouseEnter={(e) => {
-              if (!isCheckingCommits) {
-                e.currentTarget.style.borderColor = 'var(--primary, #2F6DF6)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'var(--border, #1A2748)';
-            }}
           >
             <RefreshCw
               size={13}
@@ -576,6 +612,94 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
             />
             <span>Check for new commits</span>
           </button>
+
+          {/* Delete This Track Button */}
+          {activeDataset.id && (
+            <button
+              onClick={async () => {
+                if (window.confirm('Delete this track and its assessment results?')) {
+                  await api.deleteTrack(activeDataset.id);
+                  onBackToDashboard();
+                }
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                backgroundColor: 'transparent',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: '#EF4444',
+                cursor: 'pointer',
+              }}
+              title="Delete this track"
+            >
+              <span>Delete Track</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Persistent Invariant #10 Banner */}
+      <div
+        style={{
+          backgroundColor: 'rgba(148, 163, 184, 0.08)',
+          border: '1px dashed #475569',
+          borderRadius: '8px',
+          padding: '10px 16px',
+          marginBottom: '18px',
+          fontSize: '13px',
+          color: 'var(--muted, #8C9AB8)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+        }}
+      >
+        <span style={{ color: '#94A3B8', fontSize: '15px' }}>ℹ</span>
+        <span>
+          <strong>Invariant:</strong> Not demonstrated means not found in the analyzed scope — it doesn't prove you lack the skill.
+        </span>
+      </div>
+
+      {/* Summary Row with Plain Counts Per Status (BRAIN §16 / Step 6: No Percentages) */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          backgroundColor: 'var(--surface-2, #101A30)',
+          border: '1px solid var(--border, #1A2748)',
+          borderRadius: '10px',
+          padding: '14px 20px',
+          marginBottom: '24px',
+          flexWrap: 'wrap',
+          gap: '12px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text, #E8EEF9)' }}>
+            Assessment Summary:
+          </span>
+          <span style={{ fontSize: '13px', color: '#34D399', fontWeight: 600 }}>
+            ✓ {activeDataset.assessments.filter((a) => a.status === 'DEMONSTRATED').length} Demonstrated
+          </span>
+          <span style={{ fontSize: '13px', color: '#FBBF24', fontWeight: 600 }}>
+            ◐ {activeDataset.assessments.filter((a) => a.status === 'PARTIAL').length} Partial
+          </span>
+          <span style={{ fontSize: '13px', color: '#94A3B8', fontWeight: 500 }}>
+            ○ {activeDataset.assessments.filter((a) => a.status === 'NOT_DEMONSTRATED').length} Not demonstrated in analyzed scope
+          </span>
+          {activeDataset.assessments.filter((a) => a.status === 'UNABLE_TO_ASSESS').length > 0 && (
+            <span style={{ fontSize: '13px', color: '#A78BFA', fontWeight: 600 }}>
+              ⚠ {activeDataset.assessments.filter((a) => a.status === 'UNABLE_TO_ASSESS').length} Needs verification
+            </span>
+          )}
+        </div>
+        <div style={{ fontSize: '12px', color: 'var(--muted, #8C9AB8)' }}>
+          {activeDataset.job.requirements.length} Requirements in Job Scope
         </div>
       </div>
 

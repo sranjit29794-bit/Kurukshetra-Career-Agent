@@ -22,7 +22,14 @@ export interface Requirement {
   position?: number;
 }
 
+export interface DroppedRequirement {
+  skill_key: string;
+  quote: string;
+  reason: string;
+}
+
 export interface JobDraft {
+  status?: string;
   id?: string | null;
   title: string;
   company: string;
@@ -30,6 +37,8 @@ export interface JobDraft {
   source_type: SourceType;
   raw_text?: string;
   requirements: Requirement[];
+  dropped?: DroppedRequirement[];
+  extraction_mode?: string;
   ambiguities?: string[];
   confirmed?: boolean;
   created_at?: string | null;
@@ -156,3 +165,55 @@ export interface AgentEvent {
   ts?: string;
   created_at?: string;
 }
+
+export interface ClaimedSkill {
+  skill: string;
+  taxonomy_key?: string | null;
+  source_line?: number;
+  kind?: string;
+}
+
+export interface RepoCandidate {
+  url: string;
+  owner?: string | null;
+  name?: string | null;
+  kind: 'repo' | 'profile';
+  source: 'hyperlink' | 'text';
+}
+
+export interface ResumeDraftData {
+  status?: string;
+  resume_id: string;
+  filename: string;
+  text_chars: number;
+  claimed_skills: ClaimedSkill[];
+  repo_candidates: RepoCandidate[];
+  warnings?: string[];
+}
+
+export interface ClaimsCell {
+  track_id: string;
+  status: Status;
+  strength: Strength;
+}
+
+export interface ClaimsRow {
+  requirement_id: string;
+  name: string;
+  claimed: boolean;
+  claim_source_line?: number;
+  cells: ClaimsCell[];
+}
+
+export interface ClaimsMatrixData {
+  job_id: string;
+  repos: Array<{
+    track_id: string;
+    full_name: string;
+    sha: string;
+  }>;
+  rows: ClaimsRow[];
+}
+
+export type ClaimsMatrix = ClaimsMatrixData;
+
