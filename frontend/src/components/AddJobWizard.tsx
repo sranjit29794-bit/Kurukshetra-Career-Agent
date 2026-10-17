@@ -473,10 +473,7 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
       <StepperHeader
         steps={WIZARD_STEPS}
         currentStep={step}
-        onStepClick={(id) => {
-          // Allow going backwards to completed steps
-          if (id < step) setStep(id as 1 | 2 | 3 | 4);
-        }}
+        onStepClick={(id) => setStep(id as 1 | 2 | 3 | 4)}
       />
 
       {/* ================= STEP 1: JOB SETUP & REQUIREMENTS ================= */}

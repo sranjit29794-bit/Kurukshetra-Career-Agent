@@ -448,6 +448,16 @@ export const api = {
   },
 
   /**
+   * Fetch analysis history timeline for a track.
+   */
+  async getTimeline(trackId: string) {
+    if (FORCE_FIXTURES) {
+      return DEV_FIXTURES.timeline;
+    }
+    return await requestJson<any[]>(`${API_BASE}/tracks/${trackId}/timeline`);
+  },
+
+  /**
    * Delete a specific track and associated assessments.
    */
   async deleteTrack(trackId: string): Promise<{ deleted: boolean }> {

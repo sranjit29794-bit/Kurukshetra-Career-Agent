@@ -143,59 +143,7 @@ async def create_track(
     )
 
 
-@router.get("", response_model=list[Track])
-async def list_tracks(db: Annotated[Session, Depends(get_db)]) -> list[Track]:
-    """List all tracked job-repository opportunities."""
-    track_rows = db.query(TrackModel).all()
-    results: list[Track] = []
-    for t in track_rows:
-        repo_schema = None
-        if t.repo:
-            repo_schema = Repo(
-                id=t.repo.id,
-                owner=t.repo.owner,
-                name=t.repo.name,
-                default_branch=t.repo.default_branch,
-                html_url=t.repo.html_url,
-                webhook_id=t.repo.webhook_id,
-                webhook_status=t.repo.webhook_status,  # type: ignore[arg-type]
-                created_at=(
-                    t.repo.created_at.isoformat() if t.repo.created_at else None
-                ),
-            )
-
-        results.append(
-            Track(
-                id=t.id,
-                job_id=t.job_id,
-                repo_id=t.repo_id,
-                branch=t.branch,
-                resume_id=t.resume_id,
-                last_seen_sha=t.last_seen_sha,
-                watcher_mode=WatcherMode(t.watcher_mode),
-                created_at=t.created_at.isoformat() if t.created_at else None,
-                repo=repo_schema,
-            )
-        )
-    return results
-
-
-@router.get("/{id}", response_model=Track)
-async def get_track(id: str, db: Annotated[Session, Depends(get_db)]) -> Track:
-    """Retrieve detailed track information by ID."""
-    t = db.query(TrackModel).filter(TrackModel.id == id).first()
-    if not t:
-        return JSONResponse(
-            status_code=404,
-            content={
-                "error": {
-                    "code": "TRACK_NOT_FOUND",
-                    "message": f"Track '{id}' not found",
-                    "retryable": False,
-                }
-            },
-        )  # type: ignore[return-value]
-
+def _build_track_schema(t: TrackModel, db: Session) -> Track:
     repo_schema = None
     if t.repo:
         repo_schema = Repo(
@@ -255,6 +203,7 @@ async def get_track(id: str, db: Annotated[Session, Depends(get_db)]) -> Track:
             AnalysisKind,
             AnalysisStatus,
             Evidence,
+            SignalStrength,
             Status,
             Strength,
             Trigger,
@@ -269,7 +218,6 @@ async def get_track(id: str, db: Annotated[Session, Depends(get_db)]) -> Track:
             trigger=Trigger(latest_analysis_row.trigger),
             kind=AnalysisKind(latest_analysis_row.kind),
             status=AnalysisStatus(latest_analysis_row.status),
-            files_analyzed_count=latest_analysis_row.files_analyzed_count,
             started_at=(
                 latest_analysis_row.started_at.isoformat()
                 if latest_analysis_row.started_at
@@ -285,6 +233,8 @@ async def get_track(id: str, db: Annotated[Session, Depends(get_db)]) -> Track:
         for a in latest_analysis_row.assessments:
             ev_list = [
                 Evidence(
+                    id=e.id,
+                    assessment_id=e.assessment_id,
                     signal_id=e.signal_id,
                     detector=e.detector,
                     file_path=e.file_path,
@@ -292,14 +242,15 @@ async def get_track(id: str, db: Annotated[Session, Depends(get_db)]) -> Track:
                     line_end=e.line_end,
                     blob_sha=e.blob_sha,
                     snippet=e.snippet,
-                    reason=e.reason,
-                    strength=Strength(e.strength),
-                    verified_at_sha=e.verified_at_sha,
+                    strength=SignalStrength(e.strength) if e.strength in ["strong", "weak"] else SignalStrength.STRONG,
+                    counted=e.counted,
                 )
                 for e in a.evidence
             ]
             verified_assessments.append(
                 VerifiedAssessment(
+                    id=a.id,
+                    analysis_id=a.analysis_id,
                     requirement_id=a.requirement_id,
                     status=Status(a.status),
                     strength=Strength(a.strength),
@@ -328,6 +279,32 @@ async def get_track(id: str, db: Annotated[Session, Depends(get_db)]) -> Track:
         latest_analysis=analysis_schema,
         assessments=verified_assessments,
     )
+
+
+@router.get("", response_model=list[Track])
+async def list_tracks(db: Annotated[Session, Depends(get_db)]) -> list[Track]:
+    """List all tracked job-repository opportunities with full job and assessment details."""
+    track_rows = db.query(TrackModel).all()
+    return [_build_track_schema(t, db) for t in track_rows]
+
+
+@router.get("/{id}", response_model=Track)
+async def get_track(id: str, db: Annotated[Session, Depends(get_db)]) -> Track:
+    """Retrieve detailed track information by ID."""
+    t = db.query(TrackModel).filter(TrackModel.id == id).first()
+    if not t:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "TRACK_NOT_FOUND",
+                    "message": f"Track '{id}' not found",
+                    "retryable": False,
+                }
+            },
+        )  # type: ignore[return-value]
+
+    return _build_track_schema(t, db)
 
 
 @router.post("/{id}/check-now")
@@ -418,6 +395,98 @@ async def get_track_diff(
         "files_changed": [],
         "items": [],
     }
+
+
+@router.get("/{id}/timeline")
+async def get_track_timeline(
+    id: str,
+    db: Annotated[Session, Depends(get_db)],
+) -> list[dict[str, Any]]:
+    """Retrieve full chronological analysis history and skill transitions for a track."""
+    t = db.query(TrackModel).filter(TrackModel.id == id).first()
+    if not t:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "TRACK_NOT_FOUND",
+                    "message": f"Track '{id}' not found",
+                    "retryable": False,
+                }
+            },
+        )  # type: ignore[return-value]
+
+    analyses = (
+        db.query(AnalysisModel)
+        .filter(AnalysisModel.track_id == id)
+        .order_by(AnalysisModel.started_at.desc())
+        .all()
+    )
+
+    req_map = {r.id: r.name for r in (t.job.requirements if t.job else [])}
+    history: list[dict[str, Any]] = []
+
+    for a in analyses:
+        change_set = (
+            db.query(ChangeSetModel).filter(ChangeSetModel.analysis_id == a.id).first()
+        )
+        if change_set and change_set.impact_plan:
+            plan = change_set.impact_plan
+            items = plan.get("items", [])
+            skills_reassessed = [
+                item.get("skill") for item in items if item.get("change") != "unchanged"
+            ]
+            skills_unchanged = [
+                item.get("skill") for item in items if item.get("change") == "unchanged"
+            ]
+            transitions = items
+            files_count = len(change_set.files_changed or [])
+        else:
+            files_count = (
+                len(a.scope.get("analyzed", []))
+                if a.scope
+                and isinstance(a.scope, dict)
+                and isinstance(a.scope.get("analyzed"), list)
+                else 0
+            )
+            skills_reassessed = list(req_map.values())
+            skills_unchanged = []
+            transitions = [
+                {
+                    "skill": req_map.get(asmt.requirement_id, asmt.requirement_id),
+                    "before": "NOT_DEMONSTRATED",
+                    "after": asmt.status,
+                    "change": (
+                        "improved"
+                        if asmt.status in ("DEMONSTRATED", "PARTIAL")
+                        else "unchanged"
+                    ),
+                }
+                for asmt in a.assessments
+            ]
+
+        history.append(
+            {
+                "id": a.id,
+                "track_id": a.track_id,
+                "commit_sha": a.commit_sha,
+                "commit_message": a.commit_message or "Repository assessment",
+                "author": (
+                    (t.repo.owner if t.repo else "candidate")
+                    + " <candidate@github.local>"
+                ),
+                "date": a.started_at.isoformat() if a.started_at else None,
+                "trigger": a.trigger,
+                "kind": a.kind,
+                "status": a.status,
+                "files_changed_count": files_count,
+                "skills_reassessed": skills_reassessed,
+                "skills_unchanged": skills_unchanged,
+                "transitions": transitions,
+            }
+        )
+
+    return history
 
 
 @router.delete("/{id}")

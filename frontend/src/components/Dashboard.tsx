@@ -56,7 +56,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // SSE hook with live push simulation engine (§19.2)
   const sse = useSSE({
-    trackId: activeOpportunity?.id || 'track_demo',
+    trackId: activeOpportunity?.id || (FORCE_FIXTURES ? 'track_demo' : ''),
     fixtureMode: FORCE_FIXTURES,
     onAnalysisComplete: (sha) => {
       if (sha.startsWith('c3d4e5f')) {
@@ -70,9 +70,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const displayToast = sse.toastMessage || toastMessage;
 
   const handleCheckCommits = async () => {
+    if (!activeOpportunity?.id) return;
     setIsCheckingCommits(true);
     try {
-      const res = await api.checkNow(activeOpportunity?.id || 'track_demo');
+      const res = await api.checkNow(activeOpportunity.id);
       setToastMessage(
         `Checked commits: ${res.sha.slice(0, 7)} detected · ${res.skillsUpdated} skills updated`
       );
@@ -176,7 +177,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
             changeCount: asmt?.reassessed ? 1 : undefined,
           };
         })
-      : referenceSkills;
+      : FORCE_FIXTURES
+      ? referenceSkills
+      : [];
 
   // Compute status summary counts (3 demonstrated, 1 partial, 2 not demonstrated)
   const demonstratedCount = skillsToDisplay.filter((s) => s.status === 'DEMONSTRATED').length;
@@ -256,108 +259,112 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </p>
         </div>
 
-        {/* Rehearsal Demo Buttons (§19.2) & Action Buttons */}
+        {/* Rehearsal Demo Buttons (§19.2) - visible only in explicit dev fixture mode */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          {/* Live Push Rehearsal (C2) */}
-          <button
-            onClick={() => {
-              setCurrentCommitMode('c0');
-              sse.simulateLivePush('c2');
-            }}
-            disabled={sse.isReassessing}
-            style={{
-              backgroundColor: 'rgba(47, 109, 246, 0.15)',
-              border: '1px solid #2F6DF6',
-              color: '#60A5FA',
-              borderRadius: '8px',
-              padding: '6px 12px',
-              fontSize: '12px',
-              fontWeight: 700,
-              cursor: sse.isReassessing ? 'not-allowed' : 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.15s ease',
-            }}
-            title="Simulate live push C2: adds database and tests, reassessing 4 skills"
-          >
-            <Sparkles size={13} style={{ color: '#60A5FA' }} />
-            <span>Simulate Push (C2)</span>
-          </button>
-
-          {/* Live Push Rehearsal (C1 Docs Only) */}
-          <button
-            onClick={() => {
-              sse.simulateLivePush('c1');
-              setCurrentCommitMode('c1');
-            }}
-            disabled={sse.isReassessing}
-            style={{
-              backgroundColor: 'var(--surface-2, #101A30)',
-              border: '1px solid var(--border, #1A2748)',
-              color: 'var(--muted, #8C9AB8)',
-              borderRadius: '8px',
-              padding: '6px 10px',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: sse.isReassessing ? 'not-allowed' : 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '5px',
-            }}
-            title="Simulate push C1: docs only, no skill upgrade"
-          >
-            <span>Push C1 (Docs Only)</span>
-          </button>
-
-          {/* Reset Baseline (C0) */}
-          <button
-            onClick={() => setCurrentCommitMode('c0')}
-            style={{
-              backgroundColor: currentCommitMode === 'c0' ? 'rgba(148, 163, 184, 0.2)' : 'transparent',
-              border: '1px solid var(--border, #1A2748)',
-              color: 'var(--muted, #8C9AB8)',
-              borderRadius: '8px',
-              padding: '6px 10px',
-              fontSize: '11px',
-              cursor: 'pointer',
-            }}
-            title="Reset to baseline C0 (Not Demonstrated for SQL & Testing)"
-          >
-            Reset C0
-          </button>
-
-          {/* State Switcher */}
-          <div
-            style={{
-              display: 'flex',
-              backgroundColor: 'var(--surface-2, #101A30)',
-              borderRadius: '8px',
-              border: '1px solid var(--border, #1A2748)',
-              padding: '2px',
-              fontSize: '11px',
-            }}
-          >
-            {(['normal', 'loading', 'empty', 'error'] as const).map((mode) => (
+          {FORCE_FIXTURES && (
+            <>
+              {/* Live Push Rehearsal (C2) */}
               <button
-                key={mode}
-                onClick={() => setViewState(mode)}
+                onClick={() => {
+                  setCurrentCommitMode('c0');
+                  sse.simulateLivePush('c2');
+                }}
+                disabled={sse.isReassessing}
                 style={{
-                  background: viewState === mode ? 'var(--primary, #2F6DF6)' : 'transparent',
-                  color: viewState === mode ? '#FFFFFF' : 'var(--muted, #8C9AB8)',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '4px 10px',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  textTransform: 'capitalize',
+                  backgroundColor: 'rgba(47, 109, 246, 0.15)',
+                  border: '1px solid #2F6DF6',
+                  color: '#60A5FA',
+                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: sse.isReassessing ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
                   transition: 'all 0.15s ease',
                 }}
+                title="Simulate live push C2: adds database and tests, reassessing 4 skills"
               >
-                {mode === 'loading' ? 'Loading' : mode}
+                <Sparkles size={13} style={{ color: '#60A5FA' }} />
+                <span>Simulate Push (C2)</span>
               </button>
-            ))}
-          </div>
+
+              {/* Live Push Rehearsal (C1 Docs Only) */}
+              <button
+                onClick={() => {
+                  sse.simulateLivePush('c1');
+                  setCurrentCommitMode('c1');
+                }}
+                disabled={sse.isReassessing}
+                style={{
+                  backgroundColor: 'var(--surface-2, #101A30)',
+                  border: '1px solid var(--border, #1A2748)',
+                  color: 'var(--muted, #8C9AB8)',
+                  borderRadius: '8px',
+                  padding: '6px 10px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: sse.isReassessing ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                }}
+                title="Simulate push C1: docs only, no skill upgrade"
+              >
+                <span>Push C1 (Docs Only)</span>
+              </button>
+
+              {/* Reset Baseline (C0) */}
+              <button
+                onClick={() => setCurrentCommitMode('c0')}
+                style={{
+                  backgroundColor: currentCommitMode === 'c0' ? 'rgba(148, 163, 184, 0.2)' : 'transparent',
+                  border: '1px solid var(--border, #1A2748)',
+                  color: 'var(--muted, #8C9AB8)',
+                  borderRadius: '8px',
+                  padding: '6px 10px',
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                }}
+                title="Reset to baseline C0 (Not Demonstrated for SQL & Testing)"
+              >
+                Reset C0
+              </button>
+
+              {/* State Switcher */}
+              <div
+                style={{
+                  display: 'flex',
+                  backgroundColor: 'var(--surface-2, #101A30)',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border, #1A2748)',
+                  padding: '2px',
+                  fontSize: '11px',
+                }}
+              >
+                {(['normal', 'loading', 'empty', 'error'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setViewState(mode)}
+                    style={{
+                      background: viewState === mode ? 'var(--primary, #2F6DF6)' : 'transparent',
+                      color: viewState === mode ? '#FFFFFF' : 'var(--muted, #8C9AB8)',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      textTransform: 'capitalize',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {mode === 'loading' ? 'Loading' : mode}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           {/* Check for new commits button */}
           <button
@@ -456,7 +463,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       )}
 
       {/* EMPTY STATE */}
-      {viewState === 'empty' ? (
+      {((!FORCE_FIXTURES && opportunities.length === 0) || viewState === 'empty') ? (
         <div
           className="reference-card"
           style={{
@@ -515,6 +522,133 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       ) : (
         <>
+          {/* User's Tracked Opportunities List (Step 6) */}
+          <div className="reference-card" style={{ padding: '20px 24px', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Briefcase size={16} style={{ color: 'var(--primary, #2F6DF6)' }} />
+                <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: 'var(--text, #E8EEF9)' }}>
+                  Tracked Opportunities ({opportunities.length})
+                </h3>
+              </div>
+              <button
+                onClick={onAddJob}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  backgroundColor: 'rgba(47, 109, 246, 0.15)',
+                  border: '1px solid #2F6DF6',
+                  color: '#60A5FA',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <Plus size={13} />
+                <span>Track Another Job</span>
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {opportunities.map((opp) => {
+                const dem = opp.status_summary?.demonstrated ?? opp.assessments?.filter((a) => a.status === 'DEMONSTRATED').length ?? 0;
+                const part = opp.status_summary?.partial ?? opp.assessments?.filter((a) => a.status === 'PARTIAL').length ?? 0;
+                const notDem = opp.status_summary?.not_demonstrated ?? opp.assessments?.filter((a) => a.status === 'NOT_DEMONSTRATED').length ?? 0;
+
+                return (
+                  <div
+                    key={opp.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      borderRadius: '8px',
+                      backgroundColor: opp.id === activeOpportunity?.id ? 'var(--surface-2, #101A30)' : 'var(--surface, #0A1228)',
+                      border: `1px solid ${opp.id === activeOpportunity?.id ? 'var(--primary, #2F6DF6)' : 'var(--border, #1A2748)'}`,
+                      flexWrap: 'wrap',
+                      gap: '12px',
+                    }}
+                  >
+                    <div style={{ minWidth: '220px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text, #E8EEF9)' }}>
+                          {opp.job?.title || 'Software Engineer'}
+                        </span>
+                        {opp.job?.company && (
+                          <span style={{ fontSize: '12px', color: 'var(--muted, #8C9AB8)' }}>
+                            · {opp.job.company}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', fontSize: '12px', color: 'var(--muted, #8C9AB8)' }}>
+                        <GitBranch size={13} />
+                        <span>{opp.repo?.owner}/{opp.repo?.name}</span>
+                        <span>({opp.branch})</span>
+                        <ShaChip sha={opp.last_seen_sha || 'HEAD'} size="sm" />
+                      </div>
+                    </div>
+
+                    {/* Summary counts */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px' }}>
+                      <span style={{ color: '#34D399', fontWeight: 600 }}>
+                        ✓ {dem} Demonstrated
+                      </span>
+                      <span style={{ color: '#FBBF24', fontWeight: 600 }}>
+                        ◐ {part} Partial
+                      </span>
+                      <span style={{ color: '#94A3B8' }}>
+                        ○ {notDem} Not found
+                      </span>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button
+                        onClick={() => onSelectTrack(opp.id)}
+                        style={{
+                          backgroundColor: 'var(--primary, #2F6DF6)',
+                          color: '#FFFFFF',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '6px 12px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        View Report
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (window.confirm(`Delete track for "${opp.job?.title || 'job'}"?`)) {
+                            await api.deleteTrack(opp.id);
+                            window.location.reload();
+                          }
+                        }}
+                        style={{
+                          backgroundColor: 'transparent',
+                          color: '#EF4444',
+                          border: '1px solid rgba(239, 68, 68, 0.3)',
+                          borderRadius: '6px',
+                          padding: '6px 10px',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                        }}
+                        title="Delete this track"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Top 3 Stat Cards in a row per reference.png */}
           <div
             style={{
@@ -533,12 +667,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
               value={
                 viewState === 'loading'
                   ? 'Loading job...'
-                  : activeOpportunity?.job?.title || 'Backend Engineering Intern (Python/FastAPI)'
+                  : activeOpportunity?.job?.title || 'No Active Track'
               }
               subLine={
                 activeOpportunity?.job?.company
-                  ? `${activeOpportunity.job.company} · Posted 3 days ago`
-                  : 'Kinetik Health · Posted 3 days ago'
+                  ? `${activeOpportunity.job.company} · Target Posting`
+                  : 'Add a job posting to begin'
               }
               actionText="View Job >"
               onAction={() => activeOpportunity && onSelectTrack(activeOpportunity.id)}
@@ -553,10 +687,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
               value={
                 viewState === 'loading'
                   ? 'Loading repo...'
-                  : `${activeOpportunity?.repo?.owner || 'rohan-student'}/${activeOpportunity?.repo?.name || 'student-api'}`
+                  : activeOpportunity?.repo?.owner
+                  ? `${activeOpportunity.repo.owner}/${activeOpportunity.repo.name}`
+                  : 'No repo connected'
               }
-              subLine="Last commit: 2 hours ago"
-              sha={activeOpportunity?.last_seen_sha || 'c3d4e5f67890123456789abcdef0123456789012'}
+              subLine={`Branch: ${activeOpportunity?.branch || 'main'}`}
+              sha={activeOpportunity?.last_seen_sha || 'HEAD'}
               actionText="View Repo >"
               onAction={() => activeOpportunity && onSelectTrack(activeOpportunity.id)}
             />
@@ -983,6 +1119,51 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </>
       )}
+
+      {/* Privacy Policy & Data Wipe Footer (DATA_POLICY.md / Step 6) */}
+      <div
+        style={{
+          marginTop: '36px',
+          padding: '16px 20px',
+          borderRadius: '10px',
+          border: '1px dashed var(--border, #1A2748)',
+          backgroundColor: 'rgba(10, 18, 40, 0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          fontSize: '12.5px',
+          color: 'var(--muted, #8C9AB8)',
+        }}
+      >
+        <div>
+          <strong style={{ color: 'var(--text, #E8EEF9)' }}>Data Privacy Policy:</strong>{' '}
+          Zero binary retention. No candidate PDF files are stored on disk or database. Minimal structured technical claims only.
+        </div>
+        <button
+          onClick={async () => {
+            if (window.confirm('Delete all your data (all tracks, jobs, resumes, analyses) per DATA_POLICY.md? This cannot be undone.')) {
+              await api.deleteMyData();
+              window.location.reload();
+            }
+          }}
+          style={{
+            backgroundColor: 'transparent',
+            color: '#EF4444',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            borderRadius: '6px',
+            padding: '6px 14px',
+            fontSize: '12px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+          title="Delete all candidate data permanently"
+        >
+          Delete All My Data
+        </button>
+      </div>
     </div>
   );
 };

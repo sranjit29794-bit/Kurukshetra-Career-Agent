@@ -19,11 +19,11 @@ export interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({
   currentPath,
   onNavigate,
-  trackId = 'track_demo',
+  trackId = '',
 }) => {
   const navItems = [
     { label: 'Home', path: '/', icon: Home },
-    { label: 'Assessments', path: `/tracks/${trackId}`, icon: CheckCircle },
+    { label: 'Assessments', path: trackId ? `/tracks/${trackId}` : '/tracks', icon: CheckCircle },
     { label: 'Changes & Diff', path: '/changes', icon: GitCommit },
     { label: 'Jobs', path: '/add-job', icon: Briefcase },
     { label: 'GitHub', path: '/repositories', icon: GitBranch },

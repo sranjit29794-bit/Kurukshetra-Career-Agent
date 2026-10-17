@@ -262,22 +262,29 @@ export default function App() {
     if (currentPath.includes('/changes') || currentPath.includes('/compare')) {
       return (
         <CompareView
-          onBack={() => navigate(`/tracks/${activeTrack?.id}`)}
-          onViewReport={() => navigate(`/tracks/${activeTrack?.id}`)}
+          trackId={activeTrack?.id}
+          repoOwner={activeTrack?.repo?.owner}
+          repoName={activeTrack?.repo?.name}
+          onBack={() => navigate(activeTrack?.id ? `/tracks/${activeTrack.id}` : '/')}
+          onViewReport={() => navigate(activeTrack?.id ? `/tracks/${activeTrack.id}` : '/')}
         />
       );
     }
-    if (currentPath.startsWith('/tracks/')) {
+    if (currentPath.startsWith('/tracks')) {
       const match = currentPath.match(/^\/tracks\/([^/]+)(?:\/skills\/([^/]+))?/);
-      const trackId = match ? match[1] : activeTrack?.id || 'track_demo';
-      const reqId = match && match[2] ? match[2] : 'req_sql_database';
+      const urlTrackId = match ? match[1] : '';
+      const targetTrack = opportunities.find((o) => o.id === urlTrackId) || activeTrack;
+      const firstReqId = targetTrack?.job?.requirements?.[0]?.id || 'req_sql_database';
+      const reqId = match && match[2] ? match[2] : firstReqId;
 
       return (
         <ResultsView
-          track={activeTrack}
+          track={targetTrack}
           requirementId={reqId}
           onBackToDashboard={() => navigate('/')}
-          onSelectSkill={(newReqId) => navigate(`/tracks/${trackId}/skills/${newReqId}`)}
+          onSelectSkill={(newReqId) =>
+            navigate(targetTrack?.id ? `/tracks/${targetTrack.id}/skills/${newReqId}` : `/tracks/skills/${newReqId}`)
+          }
         />
       );
     }

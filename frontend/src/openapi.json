@@ -595,7 +595,7 @@
           "Tracks"
         ],
         "summary": "List Tracks",
-        "description": "List all tracked job-repository opportunities.",
+        "description": "List all tracked job-repository opportunities with full job and assessment details.",
         "operationId": "list_tracks_api_tracks_get",
         "responses": {
           "200": {
@@ -816,6 +816,54 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Get Track Diff Api Tracks  Id  Diff Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tracks/{id}/timeline": {
+      "get": {
+        "tags": [
+          "Tracks"
+        ],
+        "summary": "Get Track Timeline",
+        "description": "Retrieve full chronological analysis history and skill transitions for a track.",
+        "operationId": "get_track_timeline_api_tracks__id__timeline_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Get Track Timeline Api Tracks  Id  Timeline Get"
                 }
               }
             }
