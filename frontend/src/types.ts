@@ -22,7 +22,14 @@ export interface Requirement {
   position?: number;
 }
 
+export interface DroppedRequirement {
+  skill_key: string;
+  quote: string;
+  reason: string;
+}
+
 export interface JobDraft {
+  status?: string;
   id?: string | null;
   title: string;
   company: string;
@@ -30,6 +37,8 @@ export interface JobDraft {
   source_type: SourceType;
   raw_text?: string;
   requirements: Requirement[];
+  dropped?: DroppedRequirement[];
+  extraction_mode?: string;
   ambiguities?: string[];
   confirmed?: boolean;
   created_at?: string | null;

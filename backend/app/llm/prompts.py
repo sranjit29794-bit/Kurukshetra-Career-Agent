@@ -53,6 +53,21 @@ INSTRUCTIONS:
    - source_quote: the exact sentence from the job posting
 3. Return a JSON object with key "requirements" containing the list of requirements."""
 
+PROMPT_EXTRACT_JOB_REQUIREMENTS_V2 = """Extract technical requirements from the following job posting.
+Enclosed job posting content:
+{untrusted_job_posting}
+
+INSTRUCTIONS:
+1. Extract distinct technical requirements matching the fixed taxonomy:
+   ["python_lang", "rest_api", "sql_database", "testing", "deployment", "ci_cd", "auth", "git"]
+2. For each requirement, output:
+   - skill_key: exact key from the fixed taxonomy
+   - priority: "must" (required/core) or "nice" (preferred/plus/bonus)
+   - quote: exact literal substring from the posting text mentioning this requirement
+3. Never invent quotes or rephrase sentences. Every quote MUST be an exact literal substring of the text.
+4. Extract at most {max_items} requirements.
+5. Return JSON matching schema: {{"requirements": [{{"skill_key": "...", "priority": "must"|"nice", "quote": "..."}}]}}"""
+
 PROMPT_JUDGE_EVIDENCE_V1 = """Evaluate the candidate's implementation signals for the following requirement:
 Requirement: {requirement_title} (Key: {taxonomy_key}, Must-have: {is_required})
 Preliminary Deterministic Status: {preliminary_status}

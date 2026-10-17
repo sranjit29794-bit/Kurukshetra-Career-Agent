@@ -209,6 +209,14 @@ class RequirementIn(BaseModel):
     position: int = 0
 
 
+class DroppedRequirement(BaseModel):
+    """A requirement dropped during validation."""
+
+    skill_key: str
+    quote: str
+    reason: str
+
+
 class JobDraft(BaseModel):
     """Structured job description with extracted requirements."""
 
@@ -221,6 +229,8 @@ class JobDraft(BaseModel):
     source_detail: str = ""
     raw_text: str = ""
     requirements: list[RequirementIn] = Field(default_factory=list)
+    dropped: list[DroppedRequirement] = Field(default_factory=list)
+    extraction_mode: str = "llm"  # "llm" or "Deterministic only"
     ambiguities: list[str] = Field(default_factory=list)
     confirmed: bool = False
     created_at: str | None = None

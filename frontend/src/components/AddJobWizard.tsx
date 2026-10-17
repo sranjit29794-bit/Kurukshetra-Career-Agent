@@ -13,7 +13,7 @@ import {
   CheckCircle2,
   Table,
 } from 'lucide-react';
-import type { JobDraft, Requirement, SourceType, ResumeDraftData } from '../types';
+import type { JobDraft, Requirement, SourceType, ResumeDraftData, DroppedRequirement } from '../types';
 import { StepperHeader, type StepItem } from './StepperHeader';
 import { SourceBadge } from './SourceBadge';
 import { SkillIconTile } from './SkillIconTile';
@@ -61,6 +61,8 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
   const [jobCompany] = useState<string>('Kinetik Health');
   const [isExtracting, setIsExtracting] = useState<boolean>(false);
   const [extractionError, setExtractionError] = useState<string | null>(null);
+  const [extractionMode, setExtractionMode] = useState<string | null>(null);
+  const [droppedRequirements, setDroppedRequirements] = useState<DroppedRequirement[]>([]);
 
   const [requirements, setRequirements] = useState<Requirement[]>([
     {
@@ -203,6 +205,12 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
         const draft = res as JobDraft;
         setSourceType('fetched');
         setExtractionError(null);
+        if (draft.extraction_mode) {
+          setExtractionMode(draft.extraction_mode);
+        }
+        if (draft.dropped) {
+          setDroppedRequirements(draft.dropped);
+        }
         if (draft.requirements && draft.requirements.length > 0) {
           setRequirements(draft.requirements);
         }
@@ -216,6 +224,38 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
       setExtractionError(
         `${msg} Switched to manual paste mode. Your source URL is preserved.`
       );
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  // Handle extracting requirements from pasted text
+  const handleExtractPastedText = async () => {
+    if (!jobText.trim()) return;
+    setIsExtracting(true);
+    setExtractionError(null);
+
+    try {
+      const res = await api.extractJob({ text: jobText.trim(), url: jobUrl.trim() });
+      if ('status' in res && res.status === 'needs_paste') {
+        setSourceType('user_provided');
+      } else {
+        const draft = res as JobDraft;
+        setSourceType('user_provided');
+        setExtractionError(null);
+        if (draft.extraction_mode) {
+          setExtractionMode(draft.extraction_mode);
+        }
+        if (draft.dropped) {
+          setDroppedRequirements(draft.dropped);
+        }
+        if (draft.requirements && draft.requirements.length > 0) {
+          setRequirements(draft.requirements);
+        }
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to extract requirements from text.';
+      setExtractionError(msg);
     } finally {
       setIsExtracting(false);
     }
@@ -328,6 +368,8 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
       source_type: sourceType,
       raw_text: jobText,
       requirements,
+      dropped: droppedRequirements,
+      extraction_mode: extractionMode || 'llm',
       confirmed: true,
     };
     onComplete(finalDraft, primaryUrl);
@@ -472,15 +514,56 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
                 resize: 'vertical',
               }}
             />
+            <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={handleExtractPastedText}
+                disabled={isExtracting || !jobText.trim()}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  backgroundColor: 'var(--surface-2, #101A30)',
+                  border: '1px solid var(--border, #1A2748)',
+                  borderRadius: '6px',
+                  padding: '6px 14px',
+                  color: 'var(--text, #E8EEF9)',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: isExtracting ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {isExtracting ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
+                <span>Extract Requirements from Text</span>
+              </button>
+            </div>
           </div>
 
           {/* Extracted Requirements Review List */}
           <div style={{ paddingTop: '20px', borderTop: '1px solid var(--border, #1A2748)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <div>
-                <h3 style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 2px', color: 'var(--text, #E8EEF9)' }}>
-                  Technical Requirements ({requirements.length})
-                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h3 style={{ fontSize: '14px', fontWeight: 700, margin: 0, color: 'var(--text, #E8EEF9)' }}>
+                    Technical Requirements ({requirements.length})
+                  </h3>
+                  {extractionMode === 'Deterministic only' && (
+                    <span
+                      data-testid="deterministic-only-chip"
+                      style={{
+                        backgroundColor: 'rgba(234, 179, 8, 0.15)',
+                        color: '#FACC15',
+                        border: '1px solid rgba(234, 179, 8, 0.3)',
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                      }}
+                    >
+                      Deterministic only
+                    </span>
+                  )}
+                </div>
                 <span style={{ fontSize: '12px', color: 'var(--muted, #8C9AB8)' }}>
                   Review and customize the extracted skills before verification
                 </span>
@@ -507,6 +590,33 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
                 <span>Add Skill</span>
               </button>
             </div>
+
+            {/* Dropped Requirements Warning Card */}
+            {droppedRequirements.length > 0 && (
+              <div
+                data-testid="dropped-requirements-card"
+                style={{
+                  backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  borderRadius: '8px',
+                  padding: '12px 16px',
+                  marginBottom: '16px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', color: '#F87171', fontSize: '12.5px', fontWeight: 600 }}>
+                  <AlertTriangle size={14} />
+                  <span>Dropped Requirements ({droppedRequirements.length} items failed validation):</span>
+                </div>
+                <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: 'var(--muted, #8C9AB8)' }}>
+                  {droppedRequirements.map((d, i) => (
+                    <li key={i} style={{ marginBottom: '4px' }}>
+                      <strong style={{ color: 'var(--text, #E8EEF9)' }}>{d.skill_key}:</strong>{' '}
+                      <em>"{d.quote.slice(0, 80)}"</em> — <span style={{ color: '#F87171' }}>{d.reason}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
               {requirements.map((req) => (

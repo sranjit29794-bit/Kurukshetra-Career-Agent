@@ -75,7 +75,7 @@ async def extract_job_posting(
             # Check if second or third line looks like location/company
             company = lines[1].split("-")[0].strip()
 
-        return job_ingest.extract_requirements(
+        return await job_ingest.extract_requirements_async(
             title=title,
             company=company,
             text_content=text,
@@ -88,7 +88,7 @@ async def extract_job_posting(
         url = payload.url.strip()
         try:
             title, company, clean_text, source_detail = await job_ingest.fetch_url(url)
-            return job_ingest.extract_requirements(
+            return await job_ingest.extract_requirements_async(
                 title=payload.title or title,
                 company=payload.company or company,
                 text_content=clean_text,

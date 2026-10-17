@@ -18,13 +18,79 @@ import re
 import urllib.parse
 import uuid
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
 import httpx
+from pydantic import BaseModel, Field
 
-from backend.app.schemas import JobDraft, Priority, RequirementIn, SourceType
+from backend.app.config import settings
+from backend.app.llm.client import llm_client
+from backend.app.llm.prompts import (
+    PROMPT_EXTRACT_JOB_REQUIREMENTS_V2,
+    SYSTEM_INJECTION_SHIELD,
+    wrap_untrusted,
+)
+from backend.app.schemas import (
+    DroppedRequirement,
+    JobDraft,
+    Priority,
+    RequirementIn,
+    SourceType,
+)
 
 logger = logging.getLogger(__name__)
+
+
+class LLMExtractedRequirement(BaseModel):
+    """Schema for a single technical requirement extracted by the LLM."""
+
+    skill_key: str
+    priority: Literal["must", "nice"]
+    quote: str
+
+
+class LLMJobExtractionOutput(BaseModel):
+    """Strict JSON schema for LLM job requirements extraction."""
+
+    requirements: list[LLMExtractedRequirement] = Field(default_factory=list)
+
+
+TAXONOMY_MAP: dict[str, tuple[str, str, list[str]]] = {
+    "python_lang": ("Python", "Language", ["python", "pydantic", "asyncio", "typing"]),
+    "rest_api": (
+        "FastAPI / REST APIs",
+        "Backend",
+        ["fastapi", "rest", "api", "endpoints"],
+    ),
+    "sql_database": ("SQL", "Database", ["sql", "postgresql", "sqlite", "queries"]),
+    "testing": (
+        "Testing",
+        "Quality Assurance",
+        ["pytest", "test", "testing", "assert"],
+    ),
+    "deployment": (
+        "Deployment",
+        "DevOps",
+        ["docker", "dockerfile", "container", "deploy", "kubernetes"],
+    ),
+    "ci_cd": (
+        "CI/CD (GitHub Actions)",
+        "DevOps",
+        ["github-actions", "workflow", "ci", "cd", "pipeline"],
+    ),
+    "auth": (
+        "Authentication & Security",
+        "Security",
+        ["oauth", "jwt", "auth", "token"],
+    ),
+    "git": (
+        "Version Control (Git)",
+        "Core Engineering",
+        ["git", "github", "pull request", "branch"],
+    ),
+}
+VALID_SKILL_KEYS = set(TAXONOMY_MAP.keys())
+MAX_EXTRACTED_ITEMS = 10
 
 # Standard skill keyword definitions for taxonomy mapping
 TAXONOMY_PATTERNS: list[tuple[str, str, str, list[str]]] = [
@@ -579,6 +645,160 @@ class JobIngestAgent:
             ),
             raw_text=text_content,
             requirements=requirements,
+            extraction_mode="Deterministic only",
+            confirmed=False,
+            created_at=now_str,
+        )
+
+    async def extract_requirements_async(
+        self,
+        title: str,
+        company: str,
+        text_content: str,
+        source_url: str,
+        source_type: SourceType,
+        source_detail: str = "",
+    ) -> JobDraft:
+        """Extract requirements using LLM with strict validation and deterministic fallback."""
+        if not settings.LLM_ENABLED:
+            logger.info("LLM disabled: using deterministic keyword extractor.")
+            return self.extract_requirements(
+                title=title,
+                company=company,
+                text_content=text_content,
+                source_url=source_url,
+                source_type=source_type,
+                source_detail=source_detail,
+            )
+
+        # 1. Fence untrusted posting text
+        fenced_text, has_injection = wrap_untrusted(text_content, label="DATA")
+        if has_injection:
+            logger.warning(
+                "Potential prompt injection pattern detected in job posting; fenced as data."
+            )
+
+        prompt_user = PROMPT_EXTRACT_JOB_REQUIREMENTS_V2.format(
+            untrusted_job_posting=fenced_text,
+            max_items=MAX_EXTRACTED_ITEMS,
+        )
+
+        try:
+            llm_result = await llm_client.complete_json(
+                system=SYSTEM_INJECTION_SHIELD,
+                user=prompt_user,
+                schema=LLMJobExtractionOutput,
+            )
+        except Exception as exc:
+            logger.warning(
+                "LLM job extraction failed (%s); falling back to deterministic extractor.",
+                exc,
+            )
+            return self.extract_requirements(
+                title=title,
+                company=company,
+                text_content=text_content,
+                source_url=source_url,
+                source_type=source_type,
+                source_detail=source_detail,
+            )
+
+        valid_reqs: list[RequirementIn] = []
+        dropped_items: list[DroppedRequirement] = []
+        seen_keys: set[str] = set()
+
+        for item in llm_result.requirements:
+            # 1. Validate skill_key in fixed taxonomy
+            if item.skill_key not in VALID_SKILL_KEYS:
+                dropped_items.append(
+                    DroppedRequirement(
+                        skill_key=item.skill_key,
+                        quote=item.quote,
+                        reason=f"Skill key '{item.skill_key}' is not in the fixed taxonomy.",
+                    )
+                )
+                continue
+
+            # 2. Validate quote is a literal substring of the posting text
+            if not item.quote or item.quote not in text_content:
+                dropped_items.append(
+                    DroppedRequirement(
+                        skill_key=item.skill_key,
+                        quote=item.quote,
+                        reason="Quote is not a literal substring of the posting text.",
+                    )
+                )
+                continue
+
+            # 3. Deduplicate by skill_key
+            if item.skill_key in seen_keys:
+                dropped_items.append(
+                    DroppedRequirement(
+                        skill_key=item.skill_key,
+                        quote=item.quote,
+                        reason=f"Duplicate requirement for skill key '{item.skill_key}'.",
+                    )
+                )
+                continue
+
+            # 4. Limit to at most N items
+            if len(valid_reqs) >= MAX_EXTRACTED_ITEMS:
+                dropped_items.append(
+                    DroppedRequirement(
+                        skill_key=item.skill_key,
+                        quote=item.quote,
+                        reason=f"Exceeded maximum requirement limit of {MAX_EXTRACTED_ITEMS}.",
+                    )
+                )
+                continue
+
+            seen_keys.add(item.skill_key)
+            name, cat, search_terms = TAXONOMY_MAP[item.skill_key]
+            priority = Priority.must if item.priority == "must" else Priority.nice
+
+            valid_reqs.append(
+                RequirementIn(
+                    id=f"req_{item.skill_key}",
+                    name=name,
+                    category=cat,
+                    priority=priority,
+                    source_sentence=item.quote,
+                    taxonomy_key=item.skill_key,
+                    search_terms=search_terms,
+                    position=len(valid_reqs) + 1,
+                )
+            )
+
+        # If LLM returned 0 valid requirements, fall back to deterministic
+        if not valid_reqs:
+            logger.info(
+                "LLM returned 0 valid requirements; falling back to deterministic extractor."
+            )
+            fallback_draft = self.extract_requirements(
+                title=title,
+                company=company,
+                text_content=text_content,
+                source_url=source_url,
+                source_type=source_type,
+                source_detail=source_detail,
+            )
+            fallback_draft.dropped = dropped_items
+            return fallback_draft
+
+        now_str = datetime.now(UTC).isoformat()
+        job_id = f"job_{uuid.uuid4().hex[:12]}"
+
+        return JobDraft(
+            id=job_id,
+            title=title,
+            company=company,
+            source_url=source_url,
+            source_type=source_type,
+            source_detail=source_detail or "Extracted via LLM",
+            raw_text=text_content,
+            requirements=valid_reqs,
+            dropped=dropped_items,
+            extraction_mode="llm",
             confirmed=False,
             created_at=now_str,
         )
