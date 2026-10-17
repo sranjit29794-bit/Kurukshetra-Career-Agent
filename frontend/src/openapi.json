@@ -1,0 +1,2364 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "DevProof API",
+    "description": "Evidence-backed career assessment & real-time repository reassessment engine",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/events/stream": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Stream Events",
+        "description": "Stream real-time agent activity and reassessment updates.",
+        "operationId": "stream_events_api_events_stream_get",
+        "parameters": [
+          {
+            "name": "track_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Track Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/evidence/{id}/file": {
+      "get": {
+        "tags": [
+          "Evidence"
+        ],
+        "summary": "Get Evidence File",
+        "description": "Retrieve full file content and highlighted line range for an evidence citation.\n\nReads from file_cache at the commit/blob SHA preserved during analysis.",
+        "operationId": "get_evidence_file_api_evidence__id__file_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceFile"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/github/users/{u}/repos": {
+      "get": {
+        "tags": [
+          "GitHub Users"
+        ],
+        "summary": "Get User Repos",
+        "description": "List public candidate repositories for a GitHub username.\n\nPublic, non-fork repos are prioritized first, sorted by recent activity (max 30).",
+        "operationId": "get_user_repos_api_github_users__u__repos_get",
+        "parameters": [
+          {
+            "name": "u",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "U"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RepoCandidate"
+                  },
+                  "title": "Response Get User Repos Api Github Users  U  Repos Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Get Health",
+        "description": "Return backend health, LLM connectivity, GitHub rate limits, and watcher status.\n\nWatcher honesty (A9): watcher displays 'webhook' ONLY after a real webhook delivery\nhas been recorded in the database; otherwise 'polling'.",
+        "operationId": "get_health_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/extract": {
+      "post": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "Extract Job Posting",
+        "description": "Extract structured job requirements from a URL (Greenhouse, Lever) or pasted text.",
+        "operationId": "extract_job_posting_api_jobs_extract_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobExtractRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/JobDraft-Output"
+                    },
+                    {
+                      "$ref": "#/components/schemas/JobExtractNeedsPaste"
+                    }
+                  ],
+                  "title": "Response Extract Job Posting Api Jobs Extract Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs": {
+      "get": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "List Jobs",
+        "description": "List all saved job postings.",
+        "operationId": "list_jobs_api_jobs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JobDraft-Output"
+                  },
+                  "type": "array",
+                  "title": "Response List Jobs Api Jobs Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "Create Job",
+        "description": "Save confirmed job description and its extracted requirements into the database.",
+        "operationId": "create_job_api_jobs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobDraft-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobDraft-Output"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/{id}": {
+      "get": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "Get Job",
+        "description": "Retrieve details and requirements for a specific job.",
+        "operationId": "get_job_api_jobs__id__get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobDraft-Output"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "Delete Job",
+        "description": "Delete a job posting and its requirements.",
+        "operationId": "delete_job_api_jobs__id__delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Delete Job Api Jobs  Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/{id}/claims-matrix": {
+      "get": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "Get Job Claims Matrix",
+        "description": "Return Claims Matrix comparing candidate resume claims against repo assessments.",
+        "operationId": "get_job_claims_matrix_api_jobs__id__claims_matrix_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimsMatrix"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/repos/connect": {
+      "post": {
+        "tags": [
+          "Repositories"
+        ],
+        "summary": "Connect Repository",
+        "description": "Connect and validate a GitHub repository.\n\nResolves default branch HEAD SHA, computes scope preview, and records\nor updates the repository row idempotently (repeated connect = one row).",
+        "operationId": "connect_repository_api_repos_connect_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepoConnectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Repo"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/repos/{owner}/{name}": {
+      "get": {
+        "tags": [
+          "Repositories"
+        ],
+        "summary": "Get Repository",
+        "description": "Retrieve connected repository information by owner and name.",
+        "operationId": "get_repository_api_repos__owner___name__get",
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Owner"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Repo"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/resume/parse": {
+      "post": {
+        "tags": [
+          "Resume"
+        ],
+        "summary": "Parse Resume",
+        "description": "Parse candidate resume from multipart file upload or text payload, extracting claims and candidate repos.",
+        "operationId": "parse_resume_api_resume_parse_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_parse_resume_api_resume_parse_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumeDraft"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/resume/{id}": {
+      "get": {
+        "tags": [
+          "Resume"
+        ],
+        "summary": "Get Resume",
+        "description": "Retrieve details and claims for a previously parsed resume.",
+        "operationId": "get_resume_api_resume__id__get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumeDraft"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tracks": {
+      "get": {
+        "tags": [
+          "Tracks"
+        ],
+        "summary": "List Tracks",
+        "description": "List all tracked job-repository opportunities.",
+        "operationId": "list_tracks_api_tracks_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Track"
+                  },
+                  "type": "array",
+                  "title": "Response List Tracks Api Tracks Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Tracks"
+        ],
+        "summary": "Create Track",
+        "description": "Create a new track linking a job and repository with optional resume_id.\n\nStores the track and emits a 'track_created' event for the orchestrator.",
+        "operationId": "create_track_api_tracks_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Track"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tracks/{id}": {
+      "get": {
+        "tags": [
+          "Tracks"
+        ],
+        "summary": "Get Track",
+        "description": "Retrieve detailed track information by ID.",
+        "operationId": "get_track_api_tracks__id__get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Track"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Tracks"
+        ],
+        "summary": "Delete Track",
+        "description": "Delete a track and its related analyses, assessments, and events.",
+        "operationId": "delete_track_api_tracks__id__delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Delete Track Api Tracks  Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tracks/{id}/check-now": {
+      "post": {
+        "tags": [
+          "Tracks"
+        ],
+        "summary": "Check Now",
+        "description": "Manually trigger immediate commit check and reassessment for a track.",
+        "operationId": "check_now_api_tracks__id__check_now_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Check Now Api Tracks  Id  Check Now Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tracks/{id}/diff": {
+      "get": {
+        "tags": [
+          "Tracks"
+        ],
+        "summary": "Get Track Diff",
+        "description": "Retrieve the latest diff/changeset for a track.",
+        "operationId": "get_track_diff_api_tracks__id__diff_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Track Diff Api Tracks  Id  Diff Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tracks/user/data": {
+      "delete": {
+        "tags": [
+          "Tracks"
+        ],
+        "summary": "Delete User Data",
+        "description": "Wipe all user tracks, analyses, jobs, and resumes per DATA_POLICY.md.",
+        "operationId": "delete_user_data_api_tracks_user_data_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Delete User Data Api Tracks User Data Delete"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/webhooks/github": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Handle Github Webhook",
+        "description": "Receive and verify signed GitHub webhooks (push, ping, check_run).",
+        "operationId": "handle_github_webhook_api_webhooks_github_post",
+        "parameters": [
+          {
+            "name": "X-Hub-Signature-256",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Hub-Signature-256"
+            }
+          },
+          {
+            "name": "X-GitHub-Delivery",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Github-Delivery"
+            }
+          },
+          {
+            "name": "X-GitHub-Event",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Github-Event"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Handle Github Webhook Api Webhooks Github Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Analysis": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "track_id": {
+            "type": "string",
+            "title": "Track Id"
+          },
+          "commit_sha": {
+            "type": "string",
+            "title": "Commit Sha"
+          },
+          "commit_message": {
+            "type": "string",
+            "title": "Commit Message",
+            "default": ""
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/Trigger",
+            "default": "manual"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AnalysisKind",
+            "default": "initial"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AnalysisStatus",
+            "default": "complete"
+          },
+          "prev_analysis_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev Analysis Id"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScopeInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ai_used": {
+            "type": "boolean",
+            "title": "Ai Used",
+            "default": false
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "assessments": {
+            "items": {
+              "$ref": "#/components/schemas/VerifiedAssessment"
+            },
+            "type": "array",
+            "title": "Assessments"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "track_id",
+          "commit_sha"
+        ],
+        "title": "Analysis",
+        "description": "An assessment run pinned to a specific commit SHA."
+      },
+      "AnalysisKind": {
+        "type": "string",
+        "enum": [
+          "initial",
+          "reassessment"
+        ],
+        "title": "AnalysisKind",
+        "description": "Initial assessment or reassessment upon commit push."
+      },
+      "AnalysisStatus": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "running",
+          "complete",
+          "failed"
+        ],
+        "title": "AnalysisStatus",
+        "description": "Analysis execution state."
+      },
+      "Body_parse_resume_api_resume_parse_post": {
+        "properties": {
+          "file": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "title": "Body_parse_resume_api_resume_parse_post"
+      },
+      "ClaimsCell": {
+        "properties": {
+          "track_id": {
+            "type": "string",
+            "title": "Track Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "strength": {
+            "$ref": "#/components/schemas/Strength"
+          }
+        },
+        "type": "object",
+        "required": [
+          "track_id",
+          "status",
+          "strength"
+        ],
+        "title": "ClaimsCell",
+        "description": "Assessment status cell for a specific repository track."
+      },
+      "ClaimsMatrix": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "repos": {
+            "items": {
+              "$ref": "#/components/schemas/ClaimsRepo"
+            },
+            "type": "array",
+            "title": "Repos"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ClaimsRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id"
+        ],
+        "title": "ClaimsMatrix",
+        "description": "Matrix comparing resume claims against repo assessments across tracks."
+      },
+      "ClaimsRepo": {
+        "properties": {
+          "track_id": {
+            "type": "string",
+            "title": "Track Id"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "sha": {
+            "type": "string",
+            "title": "Sha"
+          }
+        },
+        "type": "object",
+        "required": [
+          "track_id",
+          "full_name",
+          "sha"
+        ],
+        "title": "ClaimsRepo",
+        "description": "Repository column definition for the Claims Matrix."
+      },
+      "ClaimsRow": {
+        "properties": {
+          "requirement_id": {
+            "type": "string",
+            "title": "Requirement Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "claimed": {
+            "type": "boolean",
+            "title": "Claimed"
+          },
+          "claim_source_line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claim Source Line"
+          },
+          "cells": {
+            "items": {
+              "$ref": "#/components/schemas/ClaimsCell"
+            },
+            "type": "array",
+            "title": "Cells"
+          }
+        },
+        "type": "object",
+        "required": [
+          "requirement_id",
+          "name",
+          "claimed"
+        ],
+        "title": "ClaimsRow",
+        "description": "A single requirement row in the Claims Matrix."
+      },
+      "DroppedRequirement": {
+        "properties": {
+          "skill_key": {
+            "type": "string",
+            "title": "Skill Key"
+          },
+          "quote": {
+            "type": "string",
+            "title": "Quote"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "skill_key",
+          "quote",
+          "reason"
+        ],
+        "title": "DroppedRequirement",
+        "description": "A requirement dropped during validation."
+      },
+      "Evidence": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "assessment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessment Id"
+          },
+          "signal_id": {
+            "type": "string",
+            "title": "Signal Id"
+          },
+          "detector": {
+            "type": "string",
+            "title": "Detector"
+          },
+          "file_path": {
+            "type": "string",
+            "title": "File Path"
+          },
+          "line_start": {
+            "type": "integer",
+            "title": "Line Start"
+          },
+          "line_end": {
+            "type": "integer",
+            "title": "Line End"
+          },
+          "snippet": {
+            "type": "string",
+            "title": "Snippet"
+          },
+          "blob_sha": {
+            "type": "string",
+            "title": "Blob Sha"
+          },
+          "strength": {
+            "$ref": "#/components/schemas/SignalStrength"
+          },
+          "counted": {
+            "type": "boolean",
+            "title": "Counted",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "signal_id",
+          "detector",
+          "file_path",
+          "line_start",
+          "line_end",
+          "snippet",
+          "blob_sha",
+          "strength"
+        ],
+        "title": "Evidence",
+        "description": "Verified evidence snippet linking to a source signal."
+      },
+      "EvidenceFile": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "sha": {
+            "type": "string",
+            "title": "Sha"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "line_start": {
+            "type": "integer",
+            "title": "Line Start"
+          },
+          "line_end": {
+            "type": "integer",
+            "title": "Line End"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "sha",
+          "content",
+          "line_start",
+          "line_end"
+        ],
+        "title": "EvidenceFile",
+        "description": "File content and range associated with an evidence citation."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Health": {
+        "properties": {
+          "llm": {
+            "type": "string",
+            "title": "Llm"
+          },
+          "github": {
+            "type": "string",
+            "title": "Github"
+          },
+          "rate_remaining": {
+            "type": "integer",
+            "title": "Rate Remaining"
+          },
+          "watcher": {
+            "type": "string",
+            "title": "Watcher"
+          },
+          "next_poll_in_s": {
+            "type": "integer",
+            "title": "Next Poll In S"
+          },
+          "db_path": {
+            "type": "string",
+            "title": "Db Path",
+            "default": ""
+          },
+          "row_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Row Counts"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode",
+            "default": "real"
+          }
+        },
+        "type": "object",
+        "required": [
+          "llm",
+          "github",
+          "rate_remaining",
+          "watcher",
+          "next_poll_in_s"
+        ],
+        "title": "Health",
+        "description": "Health check response schema."
+      },
+      "JobDraft-Input": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "ok"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "company": {
+            "type": "string",
+            "title": "Company"
+          },
+          "source_url": {
+            "type": "string",
+            "title": "Source Url"
+          },
+          "source_type": {
+            "$ref": "#/components/schemas/SourceType",
+            "default": "fetched"
+          },
+          "source_detail": {
+            "type": "string",
+            "title": "Source Detail",
+            "default": ""
+          },
+          "raw_text": {
+            "type": "string",
+            "title": "Raw Text",
+            "default": ""
+          },
+          "requirements": {
+            "items": {
+              "$ref": "#/components/schemas/RequirementIn"
+            },
+            "type": "array",
+            "title": "Requirements"
+          },
+          "dropped": {
+            "items": {
+              "$ref": "#/components/schemas/DroppedRequirement"
+            },
+            "type": "array",
+            "title": "Dropped"
+          },
+          "extraction_mode": {
+            "type": "string",
+            "title": "Extraction Mode",
+            "default": "llm"
+          },
+          "ambiguities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Ambiguities"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "title": "Confirmed",
+            "default": false
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "company",
+          "source_url"
+        ],
+        "title": "JobDraft",
+        "description": "Structured job description with extracted requirements."
+      },
+      "JobDraft-Output": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "ok"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "company": {
+            "type": "string",
+            "title": "Company"
+          },
+          "source_url": {
+            "type": "string",
+            "title": "Source Url"
+          },
+          "source_type": {
+            "$ref": "#/components/schemas/SourceType",
+            "default": "fetched"
+          },
+          "source_detail": {
+            "type": "string",
+            "title": "Source Detail",
+            "default": ""
+          },
+          "raw_text": {
+            "type": "string",
+            "title": "Raw Text",
+            "default": ""
+          },
+          "requirements": {
+            "items": {
+              "$ref": "#/components/schemas/RequirementIn"
+            },
+            "type": "array",
+            "title": "Requirements"
+          },
+          "dropped": {
+            "items": {
+              "$ref": "#/components/schemas/DroppedRequirement"
+            },
+            "type": "array",
+            "title": "Dropped"
+          },
+          "extraction_mode": {
+            "type": "string",
+            "title": "Extraction Mode",
+            "default": "llm"
+          },
+          "ambiguities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Ambiguities"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "title": "Confirmed",
+            "default": false
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "company",
+          "source_url"
+        ],
+        "title": "JobDraft",
+        "description": "Structured job description with extracted requirements."
+      },
+      "JobExtractNeedsPaste": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "needs_paste",
+            "title": "Status",
+            "default": "needs_paste"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "default": "login_required"
+          },
+          "source_url": {
+            "type": "string",
+            "title": "Source Url",
+            "default": ""
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "LinkedIn / external site requires login authentication. Please paste the job description text."
+          }
+        },
+        "type": "object",
+        "title": "JobExtractNeedsPaste",
+        "description": "Typed result when a job URL requires manual paste (e.g. LinkedIn or login wall)."
+      },
+      "JobExtractRequest": {
+        "properties": {
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "raw_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Text"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "company": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company"
+          }
+        },
+        "type": "object",
+        "title": "JobExtractRequest",
+        "description": "Payload to extract job requirements from a URL or raw text."
+      },
+      "Priority": {
+        "type": "string",
+        "enum": [
+          "must",
+          "nice"
+        ],
+        "title": "Priority",
+        "description": "Job requirement priority per BRAIN \u00a711."
+      },
+      "Repo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "owner": {
+            "type": "string",
+            "title": "Owner"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "default_branch": {
+            "type": "string",
+            "title": "Default Branch",
+            "default": "main"
+          },
+          "html_url": {
+            "type": "string",
+            "title": "Html Url"
+          },
+          "head_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Sha"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScopeInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "webhook_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Webhook Id"
+          },
+          "webhook_status": {
+            "$ref": "#/components/schemas/WebhookStatus",
+            "default": "none"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "owner",
+          "name",
+          "html_url"
+        ],
+        "title": "Repo",
+        "description": "Connected GitHub repository metadata."
+      },
+      "RepoCandidate": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "owner": {
+            "type": "string",
+            "title": "Owner"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/RepoCandidateKind",
+            "default": "repo"
+          },
+          "source": {
+            "$ref": "#/components/schemas/RepoCandidateSource",
+            "default": "text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "owner"
+        ],
+        "title": "RepoCandidate",
+        "description": "A GitHub repository or profile discovered in a resume."
+      },
+      "RepoCandidateKind": {
+        "type": "string",
+        "enum": [
+          "repo",
+          "profile"
+        ],
+        "title": "RepoCandidateKind",
+        "description": "Whether a candidate GitHub URL is a specific repo or a profile."
+      },
+      "RepoCandidateSource": {
+        "type": "string",
+        "enum": [
+          "hyperlink",
+          "text"
+        ],
+        "title": "RepoCandidateSource",
+        "description": "How the link was extracted from the resume PDF/text."
+      },
+      "RepoConnectRequest": {
+        "properties": {
+          "repo_url": {
+            "type": "string",
+            "title": "Repo Url"
+          },
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          }
+        },
+        "type": "object",
+        "required": [
+          "repo_url"
+        ],
+        "title": "RepoConnectRequest",
+        "description": "Payload to connect a GitHub repository."
+      },
+      "RequirementIn": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/Priority",
+            "default": "must"
+          },
+          "source_sentence": {
+            "type": "string",
+            "title": "Source Sentence"
+          },
+          "taxonomy_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Taxonomy Key"
+          },
+          "search_terms": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Search Terms"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "category",
+          "source_sentence"
+        ],
+        "title": "RequirementIn",
+        "description": "A requirement extracted from a job description."
+      },
+      "ResumeClaim": {
+        "properties": {
+          "skill": {
+            "type": "string",
+            "title": "Skill"
+          },
+          "taxonomy_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Taxonomy Key"
+          },
+          "source_line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Source Line"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ResumeClaimKind",
+            "default": "explicit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "skill",
+          "source_line"
+        ],
+        "title": "ResumeClaim",
+        "description": "A skill claimed on a candidate's resume."
+      },
+      "ResumeClaimKind": {
+        "type": "string",
+        "enum": [
+          "explicit",
+          "inferred"
+        ],
+        "title": "ResumeClaimKind",
+        "description": "Classification of how a resume claim was identified."
+      },
+      "ResumeDraft": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "ok"
+          },
+          "resume_id": {
+            "type": "string",
+            "title": "Resume Id"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "text_chars": {
+            "type": "integer",
+            "title": "Text Chars"
+          },
+          "claimed_skills": {
+            "items": {
+              "$ref": "#/components/schemas/ResumeClaim"
+            },
+            "type": "array",
+            "title": "Claimed Skills"
+          },
+          "repo_candidates": {
+            "items": {
+              "$ref": "#/components/schemas/RepoCandidate"
+            },
+            "type": "array",
+            "title": "Repo Candidates"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "resume_id",
+          "filename",
+          "text_chars"
+        ],
+        "title": "ResumeDraft",
+        "description": "Extracted resume claims and candidate repositories."
+      },
+      "ScopeInfo": {
+        "properties": {
+          "analyzed": {
+            "type": "integer",
+            "title": "Analyzed",
+            "default": 0
+          },
+          "skipped": {
+            "type": "integer",
+            "title": "Skipped",
+            "default": 0
+          },
+          "skipped_reasons": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Skipped Reasons"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "ScopeInfo",
+        "description": "Analysis file scope reporting per BRAIN \u00a711."
+      },
+      "SignalStrength": {
+        "type": "string",
+        "enum": [
+          "strong",
+          "medium",
+          "weak"
+        ],
+        "title": "SignalStrength",
+        "description": "Detector signal strength per BRAIN \u00a710.2."
+      },
+      "SourceType": {
+        "type": "string",
+        "enum": [
+          "fetched",
+          "user_provided",
+          "api"
+        ],
+        "title": "SourceType",
+        "description": "Job draft source type per BRAIN \u00a79 and PLAN-5H \u00a71.2."
+      },
+      "Status": {
+        "type": "string",
+        "enum": [
+          "DEMONSTRATED",
+          "PARTIAL",
+          "NOT_DEMONSTRATED",
+          "UNABLE_TO_ASSESS"
+        ],
+        "title": "Status",
+        "description": "Assessment status enum per BRAIN \u00a710.1."
+      },
+      "Strength": {
+        "type": "string",
+        "enum": [
+          "strong",
+          "moderate",
+          "limited",
+          "none"
+        ],
+        "title": "Strength",
+        "description": "Assessment confidence strength label per BRAIN \u00a710.4."
+      },
+      "Track": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "repo_id": {
+            "type": "string",
+            "title": "Repo Id"
+          },
+          "branch": {
+            "type": "string",
+            "title": "Branch",
+            "default": "main"
+          },
+          "resume_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resume Id"
+          },
+          "last_seen_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen Sha"
+          },
+          "watcher_mode": {
+            "$ref": "#/components/schemas/WatcherMode",
+            "default": "polling"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "job": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobDraft-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "repo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Repo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latest_analysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Analysis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "assessments": {
+            "items": {
+              "$ref": "#/components/schemas/VerifiedAssessment"
+            },
+            "type": "array",
+            "title": "Assessments"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "job_id",
+          "repo_id"
+        ],
+        "title": "Track",
+        "description": "Track linking a job requirement set and a repository."
+      },
+      "TrackCreate": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "repo_url": {
+            "type": "string",
+            "title": "Repo Url"
+          },
+          "branch": {
+            "type": "string",
+            "title": "Branch",
+            "default": "main"
+          },
+          "resume_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resume Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "repo_url"
+        ],
+        "title": "TrackCreate",
+        "description": "Payload to create a new track linking a job and repo."
+      },
+      "Trigger": {
+        "type": "string",
+        "enum": [
+          "manual",
+          "webhook",
+          "poll"
+        ],
+        "title": "Trigger",
+        "description": "Analysis trigger origin per BRAIN \u00a79."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VerifiedAssessment": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "analysis_id": {
+            "type": "string",
+            "title": "Analysis Id"
+          },
+          "requirement_id": {
+            "type": "string",
+            "title": "Requirement Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "strength": {
+            "$ref": "#/components/schemas/Strength"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "limitation": {
+            "type": "string",
+            "title": "Limitation"
+          },
+          "next_step": {
+            "type": "string",
+            "title": "Next Step"
+          },
+          "carried_forward": {
+            "type": "boolean",
+            "title": "Carried Forward",
+            "default": false
+          },
+          "reassessed": {
+            "type": "boolean",
+            "title": "Reassessed",
+            "default": true
+          },
+          "ignored_signals": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Ignored Signals"
+          },
+          "ai_used": {
+            "type": "boolean",
+            "title": "Ai Used",
+            "default": true
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
+            },
+            "type": "array",
+            "title": "Evidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "analysis_id",
+          "requirement_id",
+          "status",
+          "strength",
+          "summary",
+          "limitation",
+          "next_step"
+        ],
+        "title": "VerifiedAssessment",
+        "description": "Verified assessment produced after Verifier checks and Coach narration."
+      },
+      "WatcherMode": {
+        "type": "string",
+        "enum": [
+          "webhook",
+          "polling",
+          "both"
+        ],
+        "title": "WatcherMode",
+        "description": "Repository change watcher mode."
+      },
+      "WebhookStatus": {
+        "type": "string",
+        "enum": [
+          "registered",
+          "manual",
+          "none"
+        ],
+        "title": "WebhookStatus",
+        "description": "Repository webhook registration state."
+      }
+    }
+  }
+}

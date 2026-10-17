@@ -368,3 +368,23 @@ def get_job_claims_matrix(id: str, db: Session = Depends(get_db)) -> Any:
         repos=repos,
         rows=rows,
     )
+
+
+@router.delete("/{id}")
+def delete_job(id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
+    """Delete a job posting and its requirements."""
+    job = db.execute(select(JobModel).where(JobModel.id == id)).scalar_one_or_none()
+    if not job:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "JOB_NOT_FOUND",
+                    "message": f"Job '{id}' not found",
+                    "retryable": False,
+                }
+            },
+        )
+    db.delete(job)
+    db.commit()
+    return {"deleted": True, "id": id}

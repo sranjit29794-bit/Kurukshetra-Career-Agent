@@ -17,6 +17,7 @@ from backend.app.db import get_db
 from backend.app.events import emit
 from backend.app.github.client import GitHubAPIError
 from backend.app.models import (
+    AgentEventModel,
     AnalysisModel,
     ChangeSetModel,
     JobModel,
@@ -417,3 +418,48 @@ async def get_track_diff(
         "files_changed": [],
         "items": [],
     }
+
+
+@router.delete("/{id}")
+async def delete_track(
+    id: str,
+    db: Annotated[Session, Depends(get_db)],
+) -> dict[str, Any]:
+    """Delete a track and its related analyses, assessments, and events."""
+    t = db.query(TrackModel).filter(TrackModel.id == id).first()
+    if not t:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "TRACK_NOT_FOUND",
+                    "message": f"Track '{id}' not found",
+                    "retryable": False,
+                }
+            },
+        )  # type: ignore[return-value]
+
+    analyses = db.query(AnalysisModel).filter(AnalysisModel.track_id == id).all()
+    for a in analyses:
+        db.delete(a)
+    events = db.query(AgentEventModel).filter(AgentEventModel.track_id == id).all()
+    for e in events:
+        db.delete(e)
+
+    db.delete(t)
+    db.commit()
+    return {"deleted": True, "id": id}
+
+
+@router.delete("/user/data")
+async def delete_user_data(
+    db: Annotated[Session, Depends(get_db)],
+) -> dict[str, Any]:
+    """Wipe all user tracks, analyses, jobs, and resumes per DATA_POLICY.md."""
+    db.query(AgentEventModel).delete()
+    db.query(AnalysisModel).delete()
+    db.query(TrackModel).delete()
+    db.query(JobModel).delete()
+    db.query(ResumeModel).delete()
+    db.commit()
+    return {"deleted": True, "message": "All user data deleted"}
