@@ -192,7 +192,7 @@
                 "schema": {
                   "anyOf": [
                     {
-                      "$ref": "#/components/schemas/JobDraft-Output"
+                      "$ref": "#/components/schemas/JobDraft"
                     },
                     {
                       "$ref": "#/components/schemas/JobExtractNeedsPaste"
@@ -231,7 +231,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/JobDraft-Output"
+                    "$ref": "#/components/schemas/JobDraft"
                   },
                   "type": "array",
                   "title": "Response List Jobs Api Jobs Get"
@@ -252,7 +252,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/JobDraft-Input"
+                "$ref": "#/components/schemas/JobDraft"
               }
             }
           },
@@ -264,7 +264,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/JobDraft-Output"
+                  "$ref": "#/components/schemas/JobDraft"
                 }
               }
             }
@@ -307,7 +307,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/JobDraft-Output"
+                  "$ref": "#/components/schemas/JobDraft"
                 }
               }
             }
@@ -1399,103 +1399,7 @@
         "title": "Health",
         "description": "Health check response schema."
       },
-      "JobDraft-Input": {
-        "properties": {
-          "status": {
-            "type": "string",
-            "title": "Status",
-            "default": "ok"
-          },
-          "id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Id"
-          },
-          "title": {
-            "type": "string",
-            "title": "Title"
-          },
-          "company": {
-            "type": "string",
-            "title": "Company"
-          },
-          "source_url": {
-            "type": "string",
-            "title": "Source Url"
-          },
-          "source_type": {
-            "$ref": "#/components/schemas/SourceType",
-            "default": "fetched"
-          },
-          "source_detail": {
-            "type": "string",
-            "title": "Source Detail",
-            "default": ""
-          },
-          "raw_text": {
-            "type": "string",
-            "title": "Raw Text",
-            "default": ""
-          },
-          "requirements": {
-            "items": {
-              "$ref": "#/components/schemas/RequirementIn"
-            },
-            "type": "array",
-            "title": "Requirements"
-          },
-          "dropped": {
-            "items": {
-              "$ref": "#/components/schemas/DroppedRequirement"
-            },
-            "type": "array",
-            "title": "Dropped"
-          },
-          "extraction_mode": {
-            "type": "string",
-            "title": "Extraction Mode",
-            "default": "llm"
-          },
-          "ambiguities": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Ambiguities"
-          },
-          "confirmed": {
-            "type": "boolean",
-            "title": "Confirmed",
-            "default": false
-          },
-          "created_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Created At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "title",
-          "company",
-          "source_url"
-        ],
-        "title": "JobDraft",
-        "description": "Structured job description with extracted requirements."
-      },
-      "JobDraft-Output": {
+      "JobDraft": {
         "properties": {
           "status": {
             "type": "string",
@@ -1788,6 +1692,49 @@
           "source": {
             "$ref": "#/components/schemas/RepoCandidateSource",
             "default": "text"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "pushed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pushed At"
+          },
+          "fork": {
+            "type": "boolean",
+            "title": "Fork",
+            "default": false
+          },
+          "archived": {
+            "type": "boolean",
+            "title": "Archived",
+            "default": false
           }
         },
         "type": "object",
@@ -1796,7 +1743,7 @@
           "owner"
         ],
         "title": "RepoCandidate",
-        "description": "A GitHub repository or profile discovered in a resume."
+        "description": "A GitHub repository or profile discovered in a resume or user listing."
       },
       "RepoCandidateKind": {
         "type": "string",
@@ -2133,7 +2080,7 @@
           "job": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/JobDraft-Output"
+                "$ref": "#/components/schemas/JobDraft"
               },
               {
                 "type": "null"

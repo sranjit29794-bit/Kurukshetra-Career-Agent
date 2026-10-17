@@ -250,7 +250,7 @@ export const api = {
     const repoData = await requestJson<any>(`${API_BASE}/repos/connect`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: repoUrl }),
+      body: JSON.stringify({ repo_url: repoUrl, url: repoUrl }),
     });
 
     return {
@@ -258,14 +258,48 @@ export const api = {
       owner: repoData.owner,
       name: repoData.name,
       default_branch: repoData.default_branch,
-      head_sha: repoData.last_seen_sha || '',
+      head_sha: repoData.head_sha || repoData.last_seen_sha || '',
       commit_message: 'feat: connect repository',
-      analyzable_files: 6,
-      scope: { analyzed: 6, skipped: 0, skipped_reasons: {}, truncated: false },
+      analyzable_files: repoData.scope?.analyzed || 0,
+      scope: repoData.scope || { analyzed: 0, skipped: 0, skipped_reasons: {}, truncated: false },
       is_python_backend: true,
       error: null,
       error_type: null,
     };
+  },
+
+  /**
+   * Fetch public repositories for a GitHub user.
+   */
+  async getUserRepos(username: string): Promise<Array<{
+    url: string;
+    owner: string;
+    name: string;
+    kind: string;
+    source: string;
+    description?: string | null;
+    language?: string | null;
+    pushed_at?: string | null;
+    fork?: boolean;
+    archived?: boolean;
+  }>> {
+    if (FORCE_FIXTURES) {
+      return [
+        {
+          url: `https://github.com/${username}/student-api`,
+          owner: username,
+          name: 'student-api',
+          kind: 'repo',
+          source: 'text',
+          description: 'Inventory management REST API built with FastAPI and SQLite',
+          language: 'Python',
+          pushed_at: '2026-10-16T19:40:39Z',
+          fork: false,
+          archived: false,
+        },
+      ];
+    }
+    return await requestJson(`${API_BASE}/github/users/${encodeURIComponent(username)}/repos`);
   },
 
   /**

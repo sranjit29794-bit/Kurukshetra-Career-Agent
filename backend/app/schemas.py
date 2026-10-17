@@ -9,7 +9,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 # --- Enums (BRAIN §9, §10, §15.2) ---
 
@@ -258,13 +258,18 @@ class ResumeClaim(BaseModel):
 
 
 class RepoCandidate(BaseModel):
-    """A GitHub repository or profile discovered in a resume."""
+    """A GitHub repository or profile discovered in a resume or user listing."""
 
     url: str
     owner: str
     name: str | None = None
     kind: RepoCandidateKind = RepoCandidateKind.repo
     source: RepoCandidateSource = RepoCandidateSource.text
+    description: str | None = None
+    language: str | None = None
+    pushed_at: str | None = None
+    fork: bool = False
+    archived: bool = False
 
 
 class ResumeDraft(BaseModel):
@@ -432,7 +437,7 @@ class Repo(BaseModel):
 class RepoConnectRequest(BaseModel):
     """Payload to connect a GitHub repository."""
 
-    repo_url: str
+    repo_url: str = Field(validation_alias=AliasChoices("repo_url", "url"))
     branch: str | None = None
 
 

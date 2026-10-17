@@ -41,6 +41,11 @@ async def get_user_repos(u: str) -> list[RepoCandidate]:
                 name=name,
                 kind=RepoCandidateKind.repo,
                 source=RepoCandidateSource.text,
+                description=r.get("description"),
+                language=r.get("language"),
+                pushed_at=r.get("pushed_at"),
+                fork=bool(r.get("fork", False)),
+                archived=bool(r.get("archived", False)),
             )
         )
 

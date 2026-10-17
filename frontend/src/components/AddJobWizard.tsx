@@ -12,6 +12,9 @@ import {
   FileText,
   CheckCircle2,
   Table,
+  Search,
+  GitFork,
+  Archive,
 } from 'lucide-react';
 import type { JobDraft, Requirement, SourceType, ResumeDraftData, DroppedRequirement } from '../types';
 import { StepperHeader, type StepItem } from './StepperHeader';
@@ -33,14 +36,17 @@ const WIZARD_STEPS: StepItem[] = [
   { id: 4, label: 'Analysis' },
 ];
 
-interface MockRepoItem {
+export interface RepoSelectorItem {
   id: string;
   name: string;
   fullName: string;
+  owner: string;
+  url: string;
   description: string;
-  stars: number;
-  analyzableFiles: number;
   language: string;
+  fork: boolean;
+  archived: boolean;
+  pushed_at?: string | null;
 }
 
 export const AddJobWizard: React.FC<AddJobWizardProps> = ({
@@ -145,51 +151,19 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
   });
 
   // --- Step 3 State: Repositories ---
-  const [githubUsername, setGithubUsername] = useState<string>('rohan-builds');
-  const [mockRepos] = useState<MockRepoItem[]>([
-    {
-      id: 'repo_student_api',
-      name: 'student-api',
-      fullName: 'rohan-builds/student-api',
-      description: 'Inventory management REST API built with FastAPI and SQLite',
-      stars: 4,
-      analyzableFiles: 6,
-      language: 'Python',
-    },
-    {
-      id: 'repo_portfolio',
-      name: 'portfolio-site',
-      fullName: 'rohan-builds/portfolio-site',
-      description: 'Personal portfolio website and blog',
-      stars: 2,
-      analyzableFiles: 1,
-      language: 'TypeScript',
-    },
-    {
-      id: 'repo_data_pipeline',
-      name: 'etl-pipeline',
-      fullName: 'rohan-builds/etl-pipeline',
-      description: 'Async batch data ingestion scripts and tests',
-      stars: 7,
-      analyzableFiles: 8,
-      language: 'Python',
-    },
-    {
-      id: 'repo_cloud_service',
-      name: 'cloud-deploy-demo',
-      fullName: 'rohan-builds/cloud-deploy-demo',
-      description: 'Docker compose and terraform config for AWS ECS deployment',
-      stars: 1,
-      analyzableFiles: 4,
-      language: 'HCL / Dockerfile',
-    },
-  ]);
-  const [selectedRepoFullNames, setSelectedRepoFullNames] = useState<string[]>([
-    'rohan-builds/student-api',
-  ]);
-  const [selectedBranches, setSelectedBranches] = useState<Record<string, string>>({
-    'rohan-builds/student-api': 'main',
-  });
+  const [githubUsername, setGithubUsername] = useState<string>('');
+  const [userRepos, setUserRepos] = useState<RepoSelectorItem[]>([]);
+  const [isLoadingRepos, setIsLoadingRepos] = useState<boolean>(false);
+  const [repoFetchError, setRepoFetchError] = useState<string | null>(null);
+  const [repoSearchQuery, setRepoSearchQuery] = useState<string>('');
+  const [customRepoUrl, setCustomRepoUrl] = useState<string>('');
+  const [isConnectingCustom, setIsConnectingCustom] = useState<boolean>(false);
+  const [customRepoError, setCustomRepoError] = useState<string | null>(null);
+  const [selectedRepoFullNames, setSelectedRepoFullNames] = useState<string[]>([]);
+  const [selectedBranches, setSelectedBranches] = useState<Record<string, string>>({});
+  const [repoScopeReports, setRepoScopeReports] = useState<
+    Record<string, { analyzed: number; skipped: number; head_sha: string; branch: string; error?: string }>
+  >({});
 
   // --- Step 4 State: Analysis Checklist Progress ---
   const [analysisStage, setAnalysisStage] = useState<number>(0);
@@ -395,7 +369,117 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
     }
   };
 
-  // Handle repo selection with max 3 rule
+  // Fetch real repositories from GitHub API via backend
+  const fetchUserRepos = async (username: string) => {
+    if (!username.trim()) return;
+    setIsLoadingRepos(true);
+    setRepoFetchError(null);
+    try {
+      const candidates = await api.getUserRepos(username.trim());
+      const items: RepoSelectorItem[] = candidates.map((c) => ({
+        id: `repo_${c.owner}_${c.name}`,
+        name: c.name,
+        fullName: `${c.owner}/${c.name}`,
+        owner: c.owner,
+        url: c.url,
+        description: c.description || 'Public repository',
+        language: c.language || 'Unknown',
+        fork: Boolean(c.fork),
+        archived: Boolean(c.archived),
+        pushed_at: c.pushed_at,
+      }));
+      setUserRepos(items);
+      // Auto-select preferred non-fork repo if none currently selected
+      if (selectedRepoFullNames.length === 0 && items.length > 0) {
+        const preferred = items.find((r) => !r.fork) || items[0];
+        setSelectedRepoFullNames([preferred.fullName]);
+        setSelectedBranches({ [preferred.fullName]: 'main' });
+        validateAndRecordScope(preferred.fullName, preferred.url);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch user repos:', err);
+      setRepoFetchError(err.message || `Failed to fetch public repositories for '${username}'.`);
+    } finally {
+      setIsLoadingRepos(false);
+    }
+  };
+
+  // Automatically fetch repos when entering step 3 if username is known
+  useEffect(() => {
+    if (step === 3 && githubUsername.trim() && userRepos.length === 0) {
+      fetchUserRepos(githubUsername.trim());
+    }
+  }, [step, githubUsername]);
+
+  // Inspect repository scope (analyzable files, skipped reasons, HEAD SHA)
+  const validateAndRecordScope = async (fullName: string, repoUrl: string) => {
+    try {
+      const result = await api.validateRepo(repoUrl);
+      setRepoScopeReports((prev) => ({
+        ...prev,
+        [fullName]: {
+          analyzed: result.scope?.analyzed || 0,
+          skipped: result.scope?.skipped || 0,
+          head_sha: result.head_sha,
+          branch: result.default_branch || 'main',
+        },
+      }));
+    } catch (err: any) {
+      setRepoScopeReports((prev) => ({
+        ...prev,
+        [fullName]: {
+          analyzed: 0,
+          skipped: 0,
+          head_sha: '',
+          branch: 'main',
+          error: err.message || 'Failed to inspect repository scope',
+        },
+      }));
+    }
+  };
+
+  // Add arbitrary public repo URL entered by user
+  const handleAddCustomRepo = async () => {
+    if (!customRepoUrl.trim()) return;
+    setIsConnectingCustom(true);
+    setCustomRepoError(null);
+    try {
+      const res = await api.validateRepo(customRepoUrl.trim());
+      const fullName = `${res.owner}/${res.name}`;
+      const newItem: RepoSelectorItem = {
+        id: `repo_${res.owner}_${res.name}`,
+        name: res.name,
+        fullName,
+        owner: res.owner,
+        url: customRepoUrl.trim(),
+        description: 'Custom connected repository',
+        language: res.is_python_backend ? 'Python' : 'Code',
+        fork: false,
+        archived: false,
+      };
+      setUserRepos((prev) => [newItem, ...prev.filter((r) => r.fullName !== fullName)]);
+      if (!selectedRepoFullNames.includes(fullName) && selectedRepoFullNames.length < 3) {
+        setSelectedRepoFullNames((prev) => [...prev, fullName]);
+        setSelectedBranches((prev) => ({ ...prev, [fullName]: res.default_branch || 'main' }));
+      }
+      setRepoScopeReports((prev) => ({
+        ...prev,
+        [fullName]: {
+          analyzed: res.scope?.analyzed || 0,
+          skipped: res.scope?.skipped || 0,
+          head_sha: res.head_sha,
+          branch: res.default_branch || 'main',
+        },
+      }));
+      setCustomRepoUrl('');
+    } catch (err: any) {
+      setCustomRepoError(err.message || 'Failed to connect repository. Please verify URL is public and valid.');
+    } finally {
+      setIsConnectingCustom(false);
+    }
+  };
+
+  // Handle repo selection with max 3 rule and trigger scope report
   const handleToggleRepo = (fullName: string) => {
     if (selectedRepoFullNames.includes(fullName)) {
       if (selectedRepoFullNames.length > 1) {
@@ -407,13 +491,17 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
         if (!selectedBranches[fullName]) {
           setSelectedBranches((prev) => ({ ...prev, [fullName]: 'main' }));
         }
+        const found = userRepos.find((r) => r.fullName === fullName);
+        if (found) {
+          validateAndRecordScope(fullName, found.url);
+        }
       }
     }
   };
 
   const handleCompleteWizard = () => {
-    const primaryRepo = selectedRepoFullNames[0] || 'rohan-builds/student-api';
-    const primaryUrl = `https://github.com/${primaryRepo}`;
+    const primaryRepo = selectedRepoFullNames[0] || (userRepos[0]?.fullName ?? '');
+    const primaryUrl = primaryRepo.startsWith('http') ? primaryRepo : `https://github.com/${primaryRepo}`;
 
     const finalDraft: JobDraft = {
       id: `job_${Date.now()}`,
@@ -1221,138 +1309,423 @@ export const AddJobWizard: React.FC<AddJobWizardProps> = ({
             </p>
           </div>
 
-          {/* GitHub Username Filter */}
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: 'var(--text, #E8EEF9)', marginBottom: '6px' }}>
-              GitHub Username
-            </label>
+          {/* "Not mine?" Warning Banner if owner differs from resume username */}
+          {parsedResume.repo_candidates?.[0]?.owner &&
+            githubUsername &&
+            !githubUsername.toLowerCase().includes(parsedResume.repo_candidates[0].owner.toLowerCase()) && (
+              <div
+                data-testid="owner-mismatch-warning"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  backgroundColor: 'rgba(251, 191, 36, 0.12)',
+                  border: '1px solid rgba(251, 191, 36, 0.35)',
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  marginBottom: '16px',
+                  color: '#FBBF24',
+                  fontSize: '12.5px',
+                }}
+              >
+                <AlertTriangle size={16} />
+                <span>
+                  <strong>Not mine?</strong> The current GitHub username (<code>{githubUsername}</code>) differs from the username extracted from your resume (<code>{parsedResume.repo_candidates[0].owner}</code>).
+                </span>
+              </div>
+            )}
+
+          {/* GitHub Username Filter & Custom URL Inputs */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: 'var(--text, #E8EEF9)', marginBottom: '6px' }}>
+                GitHub Username
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    flex: 1,
+                    backgroundColor: 'var(--surface-2, #101A30)',
+                    border: '1px solid var(--border, #1A2748)',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    gap: '8px',
+                  }}
+                >
+                  <GitBranch size={16} color="var(--muted, #8C9AB8)" />
+                  <input
+                    type="text"
+                    data-testid="github-username-input"
+                    value={githubUsername}
+                    onChange={(e) => setGithubUsername(e.target.value.trim())}
+                    placeholder="e.g. sranjit29794-bit"
+                    style={{
+                      flex: 1,
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--text, #E8EEF9)',
+                      fontSize: '13px',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  data-testid="fetch-repos-btn"
+                  onClick={() => fetchUserRepos(githubUsername)}
+                  disabled={isLoadingRepos || !githubUsername.trim()}
+                  style={{
+                    backgroundColor: 'var(--primary, #2F6DF6)',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '8px 14px',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    cursor: isLoadingRepos || !githubUsername.trim() ? 'not-allowed' : 'pointer',
+                    opacity: isLoadingRepos || !githubUsername.trim() ? 0.6 : 1,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {isLoadingRepos ? <Loader2 size={14} className="animate-spin" /> : 'Fetch Repos'}
+                </button>
+              </div>
+            </div>
+
+            {/* Paste any public repository URL */}
+            <div>
+              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: 'var(--text, #E8EEF9)', marginBottom: '6px' }}>
+                Or Paste Public Repo URL
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  data-testid="custom-repo-url-input"
+                  value={customRepoUrl}
+                  onChange={(e) => setCustomRepoUrl(e.target.value.trim())}
+                  placeholder="https://github.com/owner/repo"
+                  style={{
+                    flex: 1,
+                    backgroundColor: 'var(--surface-2, #101A30)',
+                    border: '1px solid var(--border, #1A2748)',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    color: 'var(--text, #E8EEF9)',
+                    fontSize: '13px',
+                    outline: 'none',
+                  }}
+                />
+                <button
+                  type="button"
+                  data-testid="connect-custom-repo-btn"
+                  onClick={handleAddCustomRepo}
+                  disabled={isConnectingCustom || !customRepoUrl.trim()}
+                  style={{
+                    backgroundColor: 'var(--surface-2, #101A30)',
+                    border: '1px solid var(--border, #1A2748)',
+                    color: '#60A5FA',
+                    borderRadius: '8px',
+                    padding: '8px 14px',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    cursor: isConnectingCustom || !customRepoUrl.trim() ? 'not-allowed' : 'pointer',
+                    opacity: isConnectingCustom || !customRepoUrl.trim() ? 0.6 : 1,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {isConnectingCustom ? <Loader2 size={14} className="animate-spin" /> : 'Connect'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Custom Repo Error Banner */}
+          {customRepoError && (
+            <div
+              data-testid="custom-repo-error-banner"
+              style={{
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.35)',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                color: '#F87171',
+                fontSize: '12.5px',
+              }}
+            >
+              <span>{customRepoError}</span>
+              <button
+                type="button"
+                onClick={() => setCustomRepoError(null)}
+                style={{ background: 'none', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: '11px' }}
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {/* Repo Fetch Error Banner */}
+          {repoFetchError && (
+            <div
+              data-testid="repo-fetch-error-banner"
+              style={{
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.35)',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                color: '#F87171',
+                fontSize: '12.5px',
+              }}
+            >
+              <span>{repoFetchError}</span>
+              <button
+                type="button"
+                onClick={() => fetchUserRepos(githubUsername)}
+                style={{ background: 'none', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '4px', padding: '3px 8px', color: '#F87171', cursor: 'pointer', fontSize: '11px' }}
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {/* Search Filter & Selection Counter */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', gap: '16px' }}>
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
+                gap: '8px',
                 backgroundColor: 'var(--surface-2, #101A30)',
                 border: '1px solid var(--border, #1A2748)',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                gap: '8px',
-                maxWidth: '360px',
+                borderRadius: '6px',
+                padding: '6px 10px',
+                maxWidth: '320px',
+                flex: 1,
               }}
             >
-              <GitBranch size={16} color="var(--muted, #8C9AB8)" />
+              <Search size={14} color="var(--muted, #8C9AB8)" />
               <input
                 type="text"
-                value={githubUsername}
-                onChange={(e) => setGithubUsername(e.target.value)}
-                placeholder="rohan-builds"
+                data-testid="repo-search-input"
+                value={repoSearchQuery}
+                onChange={(e) => setRepoSearchQuery(e.target.value)}
+                placeholder="Filter repositories..."
                 style={{
-                  flex: 1,
                   background: 'transparent',
                   border: 'none',
                   color: 'var(--text, #E8EEF9)',
-                  fontSize: '13px',
+                  fontSize: '12.5px',
                   outline: 'none',
+                  width: '100%',
                 }}
               />
             </div>
-          </div>
-
-          {/* Repo Selection Notice (<= 3 repos enforced) */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text, #E8EEF9)' }}>
-              Available Repositories ({selectedRepoFullNames.length}/3 selected)
-            </span>
-            <span style={{ fontSize: '12px', color: 'var(--muted, #8C9AB8)' }}>
-              Maximum 3 repositories per job assessment track
-            </span>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text, #E8EEF9)' }}>
+                Selected Repositories ({selectedRepoFullNames.length}/3)
+              </span>
+              <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted, #8C9AB8)' }}>
+                1 to 3 repositories supported per track
+              </span>
+            </div>
           </div>
 
           {/* Repositories List */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
-            {mockRepos.map((repo) => {
-              const isSelected = selectedRepoFullNames.includes(repo.fullName);
-              const isDisabled = !isSelected && selectedRepoFullNames.length >= 3;
+            {isLoadingRepos ? (
+              <div style={{ padding: '36px', textAlign: 'center', color: 'var(--muted, #8C9AB8)', fontSize: '13px' }}>
+                <Loader2 size={20} className="animate-spin" style={{ margin: '0 auto 10px', color: '#60A5FA' }} />
+                <span>Loading repositories from GitHub...</span>
+              </div>
+            ) : userRepos.length === 0 ? (
+              <div style={{ padding: '30px', textAlign: 'center', color: 'var(--muted, #8C9AB8)', fontSize: '13px', backgroundColor: 'var(--surface-2, #101A30)', borderRadius: '8px' }}>
+                No public repositories found. Enter a GitHub username above or paste a public repo URL.
+              </div>
+            ) : (
+              userRepos
+                .filter((repo) => {
+                  if (!repoSearchQuery.trim()) return true;
+                  const q = repoSearchQuery.toLowerCase();
+                  return (
+                    repo.fullName.toLowerCase().includes(q) ||
+                    repo.description.toLowerCase().includes(q) ||
+                    repo.language.toLowerCase().includes(q)
+                  );
+                })
+                .map((repo) => {
+                  const isSelected = selectedRepoFullNames.includes(repo.fullName);
+                  const isDisabled = !isSelected && selectedRepoFullNames.length >= 3;
+                  const scopeReport = repoScopeReports[repo.fullName];
 
-              return (
-                <div
-                  key={repo.id}
-                  onClick={() => !isDisabled && handleToggleRepo(repo.fullName)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '14px',
-                    backgroundColor: isSelected ? 'rgba(47, 109, 246, 0.08)' : 'var(--surface-2, #101A30)',
-                    border: `1px solid ${isSelected ? 'var(--primary, #2F6DF6)' : 'var(--border, #1A2748)'}`,
-                    borderRadius: '8px',
-                    padding: '14px 16px',
-                    cursor: isDisabled ? 'not-allowed' : 'pointer',
-                    opacity: isDisabled ? 0.5 : 1,
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    disabled={isDisabled}
-                    onChange={() => handleToggleRepo(repo.fullName)}
-                    style={{ cursor: 'pointer', width: '16px', height: '16px' }}
-                  />
+                  return (
+                    <div
+                      key={repo.id}
+                      onClick={() => !isDisabled && handleToggleRepo(repo.fullName)}
+                      data-testid={`repo-item-${repo.name}`}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                        backgroundColor: isSelected ? 'rgba(47, 109, 246, 0.08)' : 'var(--surface-2, #101A30)',
+                        border: `1px solid ${isSelected ? 'var(--primary, #2F6DF6)' : 'var(--border, #1A2748)'}`,
+                        borderRadius: '8px',
+                        padding: '12px 16px',
+                        cursor: isDisabled ? 'not-allowed' : 'pointer',
+                        opacity: isDisabled ? 0.5 : 1,
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          disabled={isDisabled}
+                          onChange={() => handleToggleRepo(repo.fullName)}
+                          style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                        />
 
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text, #E8EEF9)' }}>
-                        {repo.fullName}
-                      </span>
-                      <span
-                        style={{
-                          backgroundColor: 'var(--surface-1, #0A1224)',
-                          border: '1px solid var(--border, #1A2748)',
-                          borderRadius: '4px',
-                          padding: '1px 6px',
-                          fontSize: '11px',
-                          color: 'var(--muted, #8C9AB8)',
-                        }}
-                      >
-                        {repo.language}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '12.5px', color: 'var(--muted, #8C9AB8)', marginTop: '2px' }}>
-                      {repo.description}
-                    </div>
-                  </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text, #E8EEF9)' }}>
+                              {repo.fullName}
+                            </span>
+                            {/* Language Badge */}
+                            {repo.language && repo.language !== 'Unknown' && (
+                              <span
+                                style={{
+                                  backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                                  borderRadius: '4px',
+                                  padding: '1px 6px',
+                                  fontSize: '11px',
+                                  color: '#93C5FD',
+                                }}
+                              >
+                                {repo.language}
+                              </span>
+                            )}
+                            {/* Fork Badge */}
+                            {repo.fork && (
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px',
+                                  backgroundColor: 'rgba(156, 163, 175, 0.15)',
+                                  border: '1px solid rgba(156, 163, 175, 0.3)',
+                                  borderRadius: '4px',
+                                  padding: '1px 6px',
+                                  fontSize: '10.5px',
+                                  color: '#9CA3AF',
+                                }}
+                              >
+                                <GitFork size={10} />
+                                Fork
+                              </span>
+                            )}
+                            {/* Archived Badge */}
+                            {repo.archived && (
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px',
+                                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                                  borderRadius: '4px',
+                                  padding: '1px 6px',
+                                  fontSize: '10.5px',
+                                  color: '#F87171',
+                                }}
+                              >
+                                <Archive size={10} />
+                                Archived
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '12px', color: 'var(--muted, #8C9AB8)', marginTop: '2px' }}>
+                            {repo.description}
+                          </div>
+                        </div>
 
-                  {/* Branch selector if selected */}
-                  {isSelected && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <GitBranch size={13} color="var(--muted, #8C9AB8)" />
-                      <select
-                        value={selectedBranches[repo.fullName] || 'main'}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          setSelectedBranches({
-                            ...selectedBranches,
-                            [repo.fullName]: e.target.value,
-                          });
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                          backgroundColor: 'var(--surface-1, #0A1224)',
-                          border: '1px solid var(--border, #1A2748)',
-                          borderRadius: '6px',
-                          color: 'var(--text, #E8EEF9)',
-                          fontSize: '12px',
-                          padding: '3px 8px',
-                          outline: 'none',
-                        }}
-                      >
-                        <option value="main">main</option>
-                        <option value="master">master</option>
-                        <option value="dev">dev</option>
-                      </select>
+                        {/* Branch selector if selected */}
+                        {isSelected && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <GitBranch size={13} color="var(--muted, #8C9AB8)" />
+                            <select
+                              value={selectedBranches[repo.fullName] || 'main'}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                setSelectedBranches({
+                                  ...selectedBranches,
+                                  [repo.fullName]: e.target.value,
+                                });
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                backgroundColor: 'var(--surface-1, #0A1224)',
+                                border: '1px solid var(--border, #1A2748)',
+                                borderRadius: '6px',
+                                color: 'var(--text, #E8EEF9)',
+                                fontSize: '12px',
+                                padding: '3px 8px',
+                                outline: 'none',
+                              }}
+                            >
+                              <option value="main">main</option>
+                              <option value="master">master</option>
+                              <option value="dev">dev</option>
+                            </select>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Scope Report Banner on Selection per IN-1 / BRAIN §13 */}
+                      {isSelected && scopeReport && (
+                        <div
+                          data-testid={`scope-report-${repo.name}`}
+                          style={{
+                            marginTop: '4px',
+                            padding: '6px 12px',
+                            backgroundColor: scopeReport.error ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.08)',
+                            border: `1px solid ${scopeReport.error ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.25)'}`,
+                            borderRadius: '6px',
+                            fontSize: '11.5px',
+                            color: scopeReport.error ? '#F87171' : '#34D399',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                          }}
+                        >
+                          {scopeReport.error ? (
+                            <span>Scope error: {scopeReport.error}</span>
+                          ) : (
+                            <>
+                              <span>
+                                <strong>Scope Report:</strong> {scopeReport.analyzed} analyzable files found, {scopeReport.skipped} skipped
+                              </span>
+                              {scopeReport.head_sha && (
+                                <span style={{ opacity: 0.8, fontFamily: 'monospace' }}>
+                                  SHA: {scopeReport.head_sha.slice(0, 8)}
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })
+            )}
           </div>
 
           {/* Step 3 Actions */}
